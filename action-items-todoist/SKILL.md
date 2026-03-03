@@ -31,7 +31,7 @@ Pass ALL meeting IDs. Preserve citation links.
 ```bash
 source {user.workspace}/.env
 ```
-Read `skills/todoist-api/SKILL.md` for CLI usage. For each action item:
+Read `{user.workspace}/skills/todoist-api/SKILL.md` for CLI usage. For each action item:
 ```bash
 todoist-cli add "<actionable title>" --description "<context: meeting name, who requested, Granola link>" --priority <1-4> --labels "<relevant>"
 ```
@@ -61,7 +61,7 @@ For ANY email that needs drafting (intros, follow-ups, VC replies, sending docs,
   - First call with a VC or new lead
   - Any promise to email someone
 - When in doubt about whether to draft → DRAFT IT
-- **HGP Deck**: `assets/HGP_Deck_2025.pdf` — attach via `--attach assets/HGP_Deck_2025.pdf`. Say "Hypergrowth Partners deck" in the email body (not "one-pager" or "our deck")
+- **HGP Deck**: `{user.workspace}/assets/HGP_Deck_2025.pdf` — attach via `--attach {user.workspace}/assets/HGP_Deck_2025.pdf`. Say "Hypergrowth Partners deck" in the email body (not "one-pager" or "our deck")
 - **When drafting intros to known contacts**: search sent emails for previous intros to them, use the same format, tone, and description
 
 #### Intro-specific hard requirements (MANDATORY)
@@ -80,7 +80,7 @@ If action items include intros, follow this exactly:
 When the meeting is a FIRST call with a VC or dealflow company:
 1. Create a first-meeting follow-up draft (unless blocked by proposal-only rule below).
 2. Use meeting-specific context in the body (what was discussed, explicit next steps, concrete offers), not generic pleasantries.
-3. Include your positioning (how you work) and attach `assets/HGP_Deck_2025.pdf` when relevant.
+3. Include your positioning (how you work) and attach `{user.workspace}/assets/HGP_Deck_2025.pdf` when relevant.
 4. Allowed to use "Great meeting today" only for this first-meeting follow-up class.
 
 #### Proposal-only commitment rule (MANDATORY)
