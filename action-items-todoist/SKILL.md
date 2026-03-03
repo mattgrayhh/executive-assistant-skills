@@ -90,7 +90,7 @@ If you committed to "build a proposal" (or equivalent: proposal/deck/scope draft
 - Optionally create a second reminder task to send proposal once ready.
 
 ## Deduplication
-- Before processing, read `state/processed-meetings-YYYY-MM-DD.json` (if it exists — array of meeting titles)
+- Before processing, read `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` (if it exists — array of meeting titles)
 - Skip any meetings already in that list
 - After processing each meeting, append its title to the file
 - This prevents double-processing between post-meeting crons and the end-of-day catch-all

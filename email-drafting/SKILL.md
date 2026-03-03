@@ -127,8 +127,8 @@ When drafting follow-up emails from meetings, **Grain transcript is the primary 
 5. Fall back to Granola only if Grain has no recording for that meeting.
 
 ## Style
-Read `style/EMAIL_STYLE.md` for the full writing style guide (derived from 200+ real sent emails).
-Read `style/FEEDBACK_LOG.md` for user corrections — latest overrides win.
+Read `{user.workspace}/style/EMAIL_STYLE.md` for the full writing style guide (derived from 200+ real sent emails).
+Read `{user.workspace}/style/FEEDBACK_LOG.md` for user corrections — latest overrides win.
 
 Key points:
 - Friendly, concise, action-oriented. Warm but not fluffy.
@@ -141,17 +141,17 @@ Key points:
 - **Don't:** over-explain, corporate fluff, long formal prose
 
 ## Templates
-See `style/EMAIL_TEMPLATES.md` for pattern templates (intros, follow-ups, VC, etc.)
-See `style/email-templates.md` for HGP business templates (v1).
+See `{user.workspace}/style/EMAIL_TEMPLATES.md` for pattern templates (intros, follow-ups, VC, etc.)
+See `{user.workspace}/style/email-templates.md` for HGP business templates (v1).
 
 ## Feedback Log
 Already referenced in Style section above.
 
 ## Audit Logging (MANDATORY)
 After every external action, log it:
-- **Draft created**: `python3 scripts/audit_log.py log email_drafted "<recipient>" success '{"account": "<account>", "subject": "<subject>", "type": "<trigger_class>"}'`
-- **Email sent**: `python3 scripts/audit_log.py log email_sent "<recipient>" success '{"account": "<account>", "subject": "<subject>"}'`
-- **Draft skipped** (low confidence): `python3 scripts/audit_log.py log email_draft_skipped "<recipient>" skipped '{"reason": "<reason>"}'`
+- **Draft created**: `python3 {user.workspace}/scripts/audit_log.py log email_drafted "<recipient>" success '{"account": "<account>", "subject": "<subject>", "type": "<trigger_class>"}'`
+- **Email sent**: `python3 {user.workspace}/scripts/audit_log.py log email_sent "<recipient>" success '{"account": "<account>", "subject": "<subject>"}'`
+- **Draft skipped** (low confidence): `python3 {user.workspace}/scripts/audit_log.py log email_draft_skipped "<recipient>" skipped '{"reason": "<reason>"}'`
 
 ## Auto-Draft Constraints
 - **NEVER create calendar events** — only the scheduling assistant handles that

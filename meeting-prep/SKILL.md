@@ -72,7 +72,7 @@ mcporter call granola.query_granola_meetings query="meetings with [attendee name
 - Extract: company stage, announcements, what they do
 
 ## Research rules
-Read `style/MEETING_PREP_RULES.md` for additional research steps.
+Read `{user.workspace}/style/MEETING_PREP_RULES.md` for additional research steps.
 
 ## Attendee research rules
 - Research ALL attendees on the invite, even if they declined
@@ -118,17 +118,17 @@ If a meeting already happened, prefix with ✅ and keep brief.
 If there's a schedule conflict, flag with ⚠️.
 
 ## Save full brief
-Save the full detailed brief to `state/meeting-prep-YYYY-MM-DD.md` and also send it as a file attachment via WhatsApp.
+Save the full detailed brief to `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` and also send it as a file attachment via WhatsApp.
 
 ## Pre-meeting reminders
 After generating all briefs, create a one-shot cron job for EACH meeting that fires 5 minutes before start time. The cron job should:
-1. Read `state/meeting-prep-YYYY-MM-DD.md`
+1. Read `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md`
 2. Find the section for that specific meeting
 3. Resend the FULL formatted brief for that meeting (same format as the original WhatsApp message — bold subsection labels, blank lines, links, etc.)
 4. Prefix with "⏰ *5 min reminder*\n\n" then the full brief
 
 **Hard formatting contract (no exceptions):**
-- The reminder body must be copied verbatim from `state/meeting-prep-YYYY-MM-DD.md` for that meeting block.
+- The reminder body must be copied verbatim from `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` for that meeting block.
 - Do NOT rewrite, summarize, translate, normalize, or reformat any part of that block.
 - Keep language exactly as generated in the source brief.
 - Only allowed change is adding the `⏰ *5 min reminder*` prefix.
@@ -148,7 +148,7 @@ After generating all briefs, ALSO create a one-shot cron job for EACH meeting th
 Use `openclaw cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`. Name them `post-meeting-<short-name>`.
 
 **Hard requirement:** after creating jobs, run `openclaw cron list` and verify the expected number of `post-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
-After processing, the cron should append the meeting title to `state/processed-meetings-YYYY-MM-DD.json` (array of meeting titles already processed). This lets the end-of-day catch-all skip them.
+After processing, the cron should append the meeting title to `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` (array of meeting titles already processed). This lets the end-of-day catch-all skip them.
 
 ## Sanity checks
 - **Calendar is source of truth for meeting count**: Cross-reference email threads with the actual calendar events. If an invite was moved/rescheduled, it's still ONE meeting — don't count it as multiple. Check the calendar event ID, not email threads, to determine unique meetings.

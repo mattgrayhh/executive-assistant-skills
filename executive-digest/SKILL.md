@@ -16,11 +16,11 @@ Do not proceed until you have these values.
 ## Steps
 
 ### 1. Read rules and state
-- Read `style/DIGEST_RULES.md` for format and rules
+- Read `{user.workspace}/style/DIGEST_RULES.md` for format and rules
 - Read state files:
-  - `state/scheduling-threads.json` — stalled threads (>3 days since proposed)
-  - `state/decisions-memory.json` — context on people/companies
-  - `state/digest-state.json` — avoid repeating items
+  - `{user.workspace}/state/scheduling-threads.json` — stalled threads (>3 days since proposed)
+  - `{user.workspace}/state/decisions-memory.json` — context on people/companies
+  - `{user.workspace}/state/digest-state.json` — avoid repeating items
 
 ### 2. Check Todoist
 ```bash
@@ -62,7 +62,7 @@ Scan for commitments made but not yet completed:
 - Frame as: "Promised [action] to [person] on [date] — still pending"
 
 ### 5. Compile and send
-- Format per `style/DIGEST_RULES.md`
+- Format per `{user.workspace}/style/DIGEST_RULES.md`
 - If items exist → send via WhatsApp to {user.whatsapp}
-- Update `state/digest-state.json` with items surfaced
+- Update `{user.workspace}/state/digest-state.json` with items surfaced
 - Nothing needs attention → NO_REPLY
