@@ -59,6 +59,12 @@ Search BOTH Gmail accounts for recent inbound emails (last 7 days) from real peo
 Scan for commitments made but not yet completed:
 - **From SENT mail (last 14 days):** Look for promises like "I'll intro you", "I'll send the deck", "let me connect you with", "I'll follow up with" — then check if the intro/email was actually sent
 - **From Todoist:** Check open tasks tagged with follow-up intent (intros, send deck, ping someone) that are overdue or due today
+- **From Granola/Grain (last 7 days):** Query recent meetings for action items assigned to you that haven't been completed:
+  ```bash
+  mcporter call granola query_granola_meetings --args '{"query": "What are all of {user.name} personal action items and commitments from the last 7 days? Only things they need to do."}'
+  ```
+  Cross-check each item against: (a) sent emails — was the intro/follow-up actually sent? (b) Todoist — is there already an open task for it? (c) calendar — was the meeting/call already scheduled?
+  Surface anything that fell through the cracks — promised but not yet actioned.
 - Frame as: "Promised [action] to [person] on [date] — still pending"
 
 ### 5. Compile and send
