@@ -5,7 +5,7 @@ Complete setup for a new machine. Follow in order.
 ## 1. Clone the repo
 
 ```bash
-git clone <repo-url> ~/hypergrowth-skills
+git clone https://github.com/mgonto/executive-assistant-skills.git ~/executive-assistant-skills
 ```
 
 > The repo must live at `~/executive-assistant-skills/`. Skills reference config at `../config/user.json` which resolves relative to each skill's location.
@@ -41,7 +41,7 @@ Edit `~/.openclaw/openclaw.json`. Find the `"skills"` key and add `"load"`:
 {
   "skills": {
     "load": {
-      "extraDirs": ["~/hypergrowth-skills"]
+      "extraDirs": ["~/executive-assistant-skills"]
     },
     "install": {
       "nodeManager": "npm"
@@ -56,7 +56,42 @@ Then restart the gateway:
 openclaw gateway restart
 ```
 
-## 4. Keep USER.md in sync
+## 4. Build your email style guide
+
+The `email-drafting` skill writes emails in your voice — but it needs to learn your voice first. You do this by analyzing your sent emails and creating a style guide.
+
+### Generate the style files
+
+Ask your Claw:
+
+> "Read my last 200 sent emails from both accounts and create an email writing style guide. Analyze: sentence length, greeting patterns, sign-off patterns, vocabulary, tone, punctuation habits, and common phrases. Save it to `style/EMAIL_STYLE.md`."
+
+Then:
+
+> "Now create `style/EMAIL_TEMPLATES.md` with template patterns for the email types I send most: intros, follow-ups, scheduling, thank-you notes, VC/investor replies. Base each template on real examples from my sent mail."
+
+Finally, create an empty feedback log:
+
+```bash
+touch ~/.openclaw/workspace/style/FEEDBACK_LOG.md
+```
+
+This is where corrections accumulate over time. Every time you tell your Claw "that draft was too formal" or "I wouldn't say it that way," it logs the feedback. Latest corrections always override the original style guide.
+
+### What you end up with
+
+```
+~/.openclaw/workspace/style/
+├── EMAIL_STYLE.md          # Your writing voice (auto-generated from sent mail)
+├── EMAIL_TEMPLATES.md      # Template patterns for common email types
+├── FEEDBACK_LOG.md          # Running log of your corrections (starts empty)
+├── DIGEST_RULES.md          # Format rules for the executive digest
+└── MEETING_PREP_RULES.md   # Additional research steps for meeting prep
+```
+
+The digest and meeting prep rules files are optional — create them if you want to customize the output format beyond the defaults in the skill files.
+
+## 5. Keep USER.md in sync
 
 Your OpenClaw workspace should have a `USER.md` with the same info as `user.json` in human-readable form. Skills read `user.json` programmatically; `USER.md` provides context to the agent in every session. Keep both in sync when you update one.
 
