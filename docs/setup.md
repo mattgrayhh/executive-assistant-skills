@@ -8,12 +8,12 @@ Complete setup for a new machine. Follow in order.
 git clone <repo-url> ~/hypergrowth-skills
 ```
 
-> The repo must live at `~/hypergrowth-skills/`. Skills reference config at `../config/user.json` which resolves relative to each skill's location.
+> The repo must live at `~/executive-assistant-skills/`. Skills reference config at `../config/user.json` which resolves relative to each skill's location.
 
 ## 2. Create your user config
 
 ```bash
-cp ~/hypergrowth-skills/config/user.example.json ~/hypergrowth-skills/config/user.json
+cp ~/executive-assistant-skills/config/user.example.json ~/executive-assistant-skills/config/user.json
 ```
 
 Edit `user.json` with your personal values — it's gitignored and never committed.

@@ -5,7 +5,7 @@ description: Generate the daily executive digest with stalled scheduling threads
 # Daily Executive Digest
 
 ## Config — read before starting
-Read `../config/user.json` (resolves to `~/hypergrowth-skills/config/user.json`).
+Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — both Gmail accounts to check
 - `whatsapp` — for delivery

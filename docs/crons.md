@@ -27,7 +27,7 @@ Use `openclaw cron add` or edit the crons section in `~/.openclaw/openclaw.json`
     "thinking": "high",
     "timeoutSeconds": 1200,
     "model": "opus",
-    "message": "Read ~/hypergrowth-skills/meeting-prep/SKILL.md and run daily meeting prep for today."
+    "message": "Read ~/executive-assistant-skills/meeting-prep/SKILL.md and run daily meeting prep for today."
   },
   "delivery": {
     "mode": "none"
@@ -59,7 +59,7 @@ Use `openclaw cron add` or edit the crons section in `~/.openclaw/openclaw.json`
     "thinking": "high",
     "timeoutSeconds": 1200,
     "model": "opus",
-    "message": "Read ~/hypergrowth-skills/action-items-todoist/SKILL.md and extract action items from today's meetings into Todoist. Draft follow-up emails as needed."
+    "message": "Read ~/executive-assistant-skills/action-items-todoist/SKILL.md and extract action items from today's meetings into Todoist. Draft follow-up emails as needed."
   },
   "delivery": {
     "mode": "announce",
@@ -89,7 +89,7 @@ Use `openclaw cron add` or edit the crons section in `~/.openclaw/openclaw.json`
     "thinking": "high",
     "timeoutSeconds": 600,
     "model": "opus",
-    "message": "Read ~/hypergrowth-skills/executive-digest/SKILL.md and generate the daily executive digest."
+    "message": "Read ~/executive-assistant-skills/executive-digest/SKILL.md and generate the daily executive digest."
   },
   "delivery": {
     "mode": "announce",
@@ -132,4 +132,4 @@ Use `openclaw cron add` or edit the crons section in `~/.openclaw/openclaw.json`
 - **`sessionTarget: isolated`** is mandatory for all crons — shared sessions remember previous runs and may skip work thinking it's already done.
 - **`model: opus`** for meeting-prep, action-items, and digest — these require deep reasoning and extraction quality. Use `sonnet` only for lightweight tasks (token refresh, health checks).
 - **`thinking: high`** improves extraction and classification quality.
-- All skill paths use `~/hypergrowth-skills/` absolute references so they work correctly from isolated cron sessions regardless of working directory.
+- All skill paths use `~/executive-assistant-skills/` absolute references so they work correctly from isolated cron sessions regardless of working directory.

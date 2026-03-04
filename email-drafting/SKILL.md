@@ -5,7 +5,7 @@ description: Auto-draft and manually-requested email drafts for Gonto's accounts
 # Email Drafting Skill
 
 ## Config — read before starting
-Read `../config/user.json` (resolves to `~/hypergrowth-skills/config/user.json`).
+Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — Gmail accounts
 - `scheduling_cc` — scheduling assistant email (CC on all scheduling emails, mention in body)
@@ -42,7 +42,7 @@ Auto-draft and manually-requested email drafts for {user.primary_email} and {use
 3. **Always sign** — end every draft with `{user.signature}`
 4. **Low confidence** — don't draft; ask user for guidance
 5. **No dash punctuation** — no em-dash/en-dash in bodies. Use commas/periods.
-6. **Humanize** — apply `~/hypergrowth-skills/humanizer/SKILL.md` to every draft before finalizing
+6. **Humanize** — apply `~/executive-assistant-skills/humanizer/SKILL.md` to every draft before finalizing
 
 ### Intro Handling (required sequence)
 1. Thank introducer first

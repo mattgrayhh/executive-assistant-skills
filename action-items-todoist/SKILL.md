@@ -5,7 +5,7 @@ description: Extract action items from today's Granola meetings, create Todoist 
 # Action Items → Todoist + Email Drafts
 
 ## Config — read before starting
-Read `../config/user.json` (resolves to `~/hypergrowth-skills/config/user.json`).
+Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `name`, `full_name` — to identify your action items in meeting notes (e.g. "Gonto (Martin)")
 - `whatsapp` — for result delivery
@@ -54,7 +54,7 @@ Before creating a task, run a duplicate check against open Todoist tasks:
 
 ### 4. Draft follow-up emails
 For ANY email that needs drafting (intros, follow-ups, VC replies, sending docs, etc.):
-- **Read and follow `~/hypergrowth-skills/email-drafting/SKILL.md`** — it is the single source of truth for all drafting rules, style, templates, humanization, and delivery
+- **Read and follow `~/executive-assistant-skills/email-drafting/SKILL.md`** — it is the single source of truth for all drafting rules, style, templates, humanization, and delivery
 - Identify draft triggers from meeting notes:
   - Promised intros or follow-ups
   - Promised docs/PDFs/decks

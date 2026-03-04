@@ -5,7 +5,7 @@ description: Prepare daily meeting briefs with email context, Granola history, L
 # Daily Meeting Prep
 
 ## Config — read before starting
-Read `../config/user.json` (resolves to `~/hypergrowth-skills/config/user.json`).
+Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `name`, `full_name` — user's name
 - `primary_email`, `work_email` — Gmail accounts to check
@@ -139,10 +139,10 @@ Use `openclaw cron add` with `--at` set to 5 min before meeting time and `--dele
 
 ## Post-meeting action items + drafts
 After generating all briefs, ALSO create a one-shot cron job for EACH meeting that fires 10 minutes after the meeting END time. The cron job should:
-1. Read `~/hypergrowth-skills/action-items-todoist/SKILL.md`
+1. Read `~/executive-assistant-skills/action-items-todoist/SKILL.md`
 2. Query Granola for ONLY the meeting that just ended (by title, attendee, or time)
 3. Extract action items → create Todoist tasks
-4. Draft any follow-up emails per `~/hypergrowth-skills/email-drafting/SKILL.md`
+4. Draft any follow-up emails per `~/executive-assistant-skills/email-drafting/SKILL.md`
 5. Send results to WhatsApp ({user.whatsapp})
 
 Use `openclaw cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`. Name them `post-meeting-<short-name>`.

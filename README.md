@@ -1,104 +1,100 @@
-# hypergrowth-skills
+# executive-assistant-skills
 
-OpenClaw agent skills for the Hypergrowth Partners team.
+OpenClaw skills that replace a human executive assistant.
 
-## Skills
+After setting up these skills with [OpenClaw](https://docs.openclaw.ai/), I let go of my human EA and replaced her entirely with my Claw. These five skills handle the core of what an executive assistant does: prepping for meetings, following up on action items, drafting emails, and keeping you on top of everything.
 
-| Skill | Description |
-|-------|-------------|
-| `humanizer` | Remove AI writing patterns from text |
-| `meeting-prep` | Daily meeting briefs: email context, Granola history, LinkedIn research |
-| `action-items-todoist` | Extract action items from meetings → Todoist tasks + email drafts |
-| `email-drafting` | Auto-draft and manually-requested email drafts |
-| `executive-digest` | Daily status digest: stalled threads, pending intros, tasks, calendar |
+## What's included
+
+| Skill | What it replaces |
+|-------|-----------------|
+| `meeting-prep` | EA researching attendees, pulling email history, and briefing you before each call |
+| `action-items-todoist` | EA reviewing meeting notes, creating follow-up tasks, and drafting emails you promised to send |
+| `email-drafting` | EA drafting replies, intro emails, scheduling responses, and thank-you notes in your voice |
+| `executive-digest` | EA giving you a morning status update: stalled threads, pending intros, overdue tasks, calendar conflicts |
+| `humanizer` | Making sure nothing your Claw writes sounds like AI wrote it |
+
+## How it works
+
+Each skill is a markdown file (`SKILL.md`) that tells your Claw exactly how to do the job. Your Claw reads the skill, follows the instructions, and delivers results to WhatsApp (or Slack, Telegram, etc.).
+
+Skills run on cron schedules — meeting prep fires before your first meeting, action items run after your last meeting, and the digest hits every morning. You can also trigger any skill manually by asking your Claw.
+
+All personal config (email accounts, timezone, work schedule, etc.) lives in a single `config/user.json` that's gitignored and never committed.
+
+## Prerequisites
+
+- [OpenClaw](https://docs.openclaw.ai/) running (local or server)
+- Two Gmail accounts connected via [gog](https://github.com/xhit/gog) CLI
+- [Granola](https://granola.ai/) or [Grain](https://grain.com/) for meeting transcripts (via mcporter MCP)
+- [Todoist CLI](https://github.com/joelhoelting/todoist-cli) for task management
+- A `style/` directory in your OpenClaw workspace with email style guides (see `docs/setup.md`)
 
 ---
 
-## Quick Setup
+## Quick setup
 
 ### 1. Clone the repo
 
 ```bash
-git clone <repo-url> ~/hypergrowth-skills
+git clone https://github.com/mgonto/executive-assistant-skills.git ~/executive-assistant-skills
 ```
 
-> Must clone to `~/hypergrowth-skills/` — skills reference config at a fixed relative path.
-
-### 2. Create your user config
+### 2. Create your config
 
 ```bash
-cp ~/hypergrowth-skills/config/user.example.json ~/hypergrowth-skills/config/user.json
-# Edit user.json with your personal values — it's gitignored, never committed
+cp ~/executive-assistant-skills/config/user.example.json ~/executive-assistant-skills/config/user.json
+# Edit user.json with your values — it's gitignored
 ```
 
-### 3. Configure OpenClaw to load these skills
+### 3. Tell OpenClaw to load these skills
 
-Edit `~/.openclaw/openclaw.json`. Add `"load"` inside the `"skills"` key:
+Edit `~/.openclaw/openclaw.json`:
 
 ```json
 {
   "skills": {
     "load": {
-      "extraDirs": ["~/hypergrowth-skills"]
-    },
-    "install": {
-      "nodeManager": "npm"
+      "extraDirs": ["~/executive-assistant-skills"]
     }
   }
 }
 ```
 
-> If you don't have a `"skills"` key yet, add the whole block. The `install` section is optional.
-
-### 4. Restart the gateway
+### 4. Restart
 
 ```bash
 openclaw gateway restart
 ```
 
-Skills from `~/hypergrowth-skills/` will now load alongside your workspace skills.
+### 5. Set up crons
+
+See `docs/crons.md` for ready-to-paste cron job configs.
 
 ---
 
-## How skills use your config
+## Config fields
 
-Each skill reads `../config/user.json` at startup — an explicit file read, not passive context injection. This makes config usage reliable even in long or isolated sessions.
-
-The `user.json` supplies: email accounts, WhatsApp number, timezone, scheduling contacts, signature, and workspace path.
-
-Pattern used at the top of every skill:
-
-```markdown
-## Config — read before starting
-Read `../config/user.json` (resolves to `~/hypergrowth-skills/config/user.json`).
-Extract: name, primary_email, work_email, whatsapp, timezone, scheduling_cc ...
-Do not proceed until you have these values.
-```
-
----
-
-## User config fields
-
-See `config/user.example.json` for the full template. Key fields:
+See `config/user.example.json` for the full template:
 
 | Field | Example | Used for |
 |-------|---------|----------|
-| `name` | `"Gonto"` | Granola queries, task attribution |
+| `name` | `"YourName"` | Meeting transcript queries, task attribution |
 | `primary_email` | `"you@gmail.com"` | Gmail account 1 |
 | `work_email` | `"you@company.com"` | Gmail account 2 |
-| `whatsapp` | `"+5491234567890"` | Digest/alert delivery |
-| `timezone` | `"America/Argentina/Buenos_Aires"` | Meeting times, cron scheduling |
-| `scheduling_cc` | `"assistant@company.com"` | CC on scheduling emails (mentioned in body) |
-| `scheduling_silent_cc` | `"colleague@company.com"` | Silent CC (never mentioned in body) |
+| `whatsapp` | `"+1234567890"` | Digest and alert delivery |
+| `timezone` | `"America/New_York"` | Meeting times, cron scheduling |
+| `scheduling_cc` | `"assistant@company.com"` | CC on scheduling emails |
+| `scheduling_silent_cc` | `"colleague@company.com"` | Silent CC (not mentioned in body) |
 | `slack_username` | `"yourname"` | Slack DM for meeting briefs |
 | `signature` | `"--yourname"` | Email sign-off |
-| `workspace` | `"/home/user/.openclaw/workspace"` | Absolute path for scripts/state |
+| `workspace` | `"/home/user/.openclaw/workspace"` | Absolute path to your OpenClaw workspace |
 
 ---
 
-## Full setup & cron configuration
+## Full setup guide
 
-- `docs/setup.md` — complete setup guide (mcporter, OAuth, gog, Todoist)
+- `docs/setup.md` — complete setup (mcporter, OAuth, gog, Todoist CLI)
 - `docs/crons.md` — cron job templates for all skills
 
 ---
@@ -106,6 +102,6 @@ See `config/user.example.json` for the full template. Key fields:
 ## Repository conventions
 
 - `config/user.json` is **gitignored** — each person creates their own
-- `config/user.example.json` is the **committed template**
+- `config/user.example.json` is the committed template
 - `state/` and `logs/` are gitignored (machine-local)
-- Skills reference workspace files (`style/`, `state/`, `scripts/`) via relative paths — these work because OpenClaw runs with the workspace as the working directory
+- Skills reference workspace files (`style/`, `state/`, `scripts/`) via `{user.workspace}/` prefix for portability
