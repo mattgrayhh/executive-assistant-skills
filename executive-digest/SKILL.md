@@ -65,6 +65,7 @@ Use `gog --account {email} --no-input gmail search "query" --json` for all searc
 
 **Stale draft auto-cleanup (MANDATORY):**
 - For EVERY draft found, fetch the full thread (`gog --account <email> --no-input gmail thread get <threadId> --json`) and check if Gonto already replied manually (sent message in the same thread AFTER the draft was created).
+- **Fallback if `gmail thread get` returns empty `{}`**: This is a known gog CLI issue for some threads. Use `gog --account <email> --no-input gmail search "in:sent thread:<threadId>" --json` instead to check for sent replies in that thread. If search also fails, use the original search result snippets + metadata to make a best-effort determination.
 - If Gonto already replied in the thread → **delete the draft automatically** (`gmail drafts delete <draftId> --force`) and do NOT surface it in the digest.
 - This catches cases where auto-drafted replies become stale because Gonto replied on his own.
 
