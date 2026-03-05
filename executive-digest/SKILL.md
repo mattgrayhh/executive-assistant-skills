@@ -22,7 +22,7 @@ Do not proceed until you have these values.
   - `{user.workspace}/state/decisions-memory.json` — context on people/companies
   - `{user.workspace}/state/digest-state.json` — avoid repeating items
 
-Schema: `{"lastRun": "ISO date", "surfacedItems": [{"id": "thread_id or task_id", "type": "intro|followup|draft|task", "surfacedAt": "ISO date"}]}`. An item is "repeated" if its ID appeared in the last digest run. Re-surface only if its status changed since then.
+Schema: `{"lastRun": "ISO date", "surfacedItems": [{"id": "<thread_id|task_id>", "type": "intro|followup|draft|task|calendar", "surfacedAt": "ISO date"}]}`. Use consistent IDs: Gmail thread IDs for email items, Todoist task IDs for tasks, calendar event IDs for calendar items. Do NOT use semantic strings like "calendar:golf-mar5" — always use the actual service ID. An item is "repeated" if its ID appeared in the last digest run. Re-surface only if its status changed since then.
 
 ### Error handling
 If any data source (Gmail, Calendar, Todoist, Granola) fails or times out:
@@ -41,9 +41,10 @@ Highlight overdue first. Skip no-due-date tasks unless in inbox.
 
 ### 3. Check calendar (next 7 days) — BOTH accounts MANDATORY
 ```bash
-gog --account {user.primary_email} --no-input calendar events --from today --to '+7 days' --json
-gog --account {user.work_email} --no-input calendar events --from today --to '+7 days' --json
+gog --account {user.primary_email} --no-input calendar list primary --from "<today>T00:00:00-03:00" --to "<today+7>T00:00:00-03:00" --json
+gog --account {user.work_email} --no-input calendar list primary --from "<today>T00:00:00-03:00" --to "<today+7>T00:00:00-03:00" --json
 ```
+Use actual ISO8601 dates with ART timezone offset (-03:00). Relative dates like 'today' and '+7 days' are not supported by gog.
 **CRITICAL: You MUST run BOTH commands and merge ALL events from both calendars into a single timeline.** Events live on different calendars — showing only one gives an incomplete picture. Deduplicate by time+title if the same event appears on both. Look for OOO, travel, vacation blocks, back-to-back conflicts, and double-bookings across calendars.
 
 ### 4. Check Gmail for pending items — BOTH accounts
@@ -63,7 +64,7 @@ Use `gog --account {email} --no-input gmail search "query" --json` for all searc
 - Only report drafts that still require a send/edit decision.
 
 **Stale draft auto-cleanup (MANDATORY):**
-- For EVERY draft found, fetch the full thread (`gmail thread <threadId>`) and check if Gonto already replied manually (sent message in the same thread AFTER the draft was created).
+- For EVERY draft found, fetch the full thread (`gog --account <email> --no-input gmail thread get <threadId> --json`) and check if Gonto already replied manually (sent message in the same thread AFTER the draft was created).
 - If Gonto already replied in the thread → **delete the draft automatically** (`gmail drafts delete <draftId> --force`) and do NOT surface it in the digest.
 - This catches cases where auto-drafted replies become stale because Gonto replied on his own.
 

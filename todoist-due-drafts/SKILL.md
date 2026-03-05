@@ -5,7 +5,7 @@ description: Check Todoist for tasks due today (and overdue) that involve pingin
 # Todoist Due-Today Email Drafts
 
 ## Config — read before starting
-Read `~/executive-assistant-skills/config/user.json`.
+Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — Gmail accounts
 - `whatsapp` — for notification delivery
@@ -46,7 +46,8 @@ For each task:
    ```
    Then cross-check with Grain for the full transcript:
    ```bash
-   mcporter call grain.list_attended_meetings --args '{"filters": {"start_date": "<meeting-date>", "end_date": "<meeting-date+1>"}}'
+   mcporter call grain.list_attended_meetings --args '{}'
+   # Note: Grain's schema does not support `start_date`/`end_date` filters. Call with empty args and filter the results manually by `start_datetime` to match the meeting date range.
    mcporter call grain.fetch_meeting_transcript --args '{"meeting_id": "<grain_meeting_id>"}'
    ```
    When meeting context is available, the email draft must reflect what was actually said — not just the task title. Look for: specific commitments, timelines discussed, names/projects mentioned, tone of the conversation, and any docs/links promised.

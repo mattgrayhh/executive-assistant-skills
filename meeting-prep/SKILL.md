@@ -20,6 +20,8 @@ Do not proceed until you have these values.
 - Timezone: {user.timezone}
 - Calendars: primary of {user.primary_email} AND {user.work_email}
 - Today's meetings only
+
+**Timezone note:** Use explicit ART-bounded ISO8601 timestamps for calendar queries, NOT `--date`. Example: `gog calendar list primary --account <email> --from "2026-03-03T00:00:00-03:00" --to "2026-03-04T00:00:00-03:00" --json`. The `--date` flag uses UTC boundaries which misaligns with ART.
 - **ALL meetings with attendees** — both external and internal
 - Skip personal/solo events with no attendees (e.g. "Personal Trainer", "Golf", all-day reminders)
 
@@ -96,6 +98,7 @@ mcporter call granola.query_granola_meetings query="meetings with [attendee name
 - Include a short explicit line: **"Why this meeting now"** based on prior action items or current email trigger
 - **Exact name matching**: When attributing Granola results to an attendee, verify BOTH first AND last name match exactly. Different people can share a first name — never assume a match based on first name alone.
 - **Auth failure:** If Granola returns an auth error, run `mcporter auth granola --reset` and retry once. If still failing, note "⚠️ Granola unavailable" and continue without it.
+- **Empty summary:** If Granola returns a meeting record but with no/empty summary, note "Previous meeting found but no summary available" — don't silently skip it.
 
 ### 4. LinkedIn research
 - Search: `"[attendee name] [company] LinkedIn"`

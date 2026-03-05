@@ -16,6 +16,9 @@ Do not proceed until you have these values.
 ## Steps
 
 ### 1. Get today's meetings from Granola
+
+**Timezone note:** Granola stores meeting times in UTC. For ART (UTC-3), querying "today" means using today's date AND tomorrow's date in UTC. E.g., for March 3 ART, query `custom_start: "2026-03-03"` and `custom_end: "2026-03-04"` to capture all ART-day meetings.
+
 ```bash
 mcporter call granola list_meetings --args '{"time_range": "custom", "custom_start": "<today YYYY-MM-DD>", "custom_end": "<tomorrow YYYY-MM-DD>"}'
 ```
@@ -154,7 +157,8 @@ If a meeting appears in `processed-meetings-YYYY-MM-DD.json`, do NOT process it 
 ## Cross-check with Grain (ACTIVE — transcript-level verification)
 Grain MCP is available with full transcript access. After extracting action items from Granola:
 
-1. **Find the meeting in Grain**: `mcporter call grain.list_attended_meetings --args '{"filters": {"start_date": "<today>", "end_date": "<tomorrow>"}}'`
+1. **Find the meeting in Grain**: `mcporter call grain.list_attended_meetings --args '{}'`
+   Note: Grain's schema does not support `start_date`/`end_date` filters. Call with empty args and filter the results manually by `start_datetime` to match today's date range.
 2. **Fetch the transcript**: `mcporter call grain.fetch_meeting_transcript --args '{"meeting_id": "<grain_meeting_id>"}'`
 3. **Cross-check each action item against the transcript**:
    - Is the action item actually assigned to you, or to the other person?
