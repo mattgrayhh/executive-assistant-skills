@@ -20,15 +20,14 @@ Edit `user.json` with your personal values — it's gitignored and never committ
 
 Fields to fill in:
 - `name` / `full_name` — your name (used in Circleback queries)
-- `whatsapp` — your WhatsApp phone number (e164 format, e.g. `+1234567890`)
 - `timezone` — IANA timezone string (e.g. `America/Argentina/Buenos_Aires`)
 - `work_days` — your working days (e.g. `["Monday", "Wednesday"]`)
 - `availability_window` — hours available for meetings (e.g. `"15:00-19:00"`)
 - `primary_email` — personal Microsoft 365 account
 - `work_email` — work Microsoft 365 account
+- `notification_email` — inbox where EA output emails land (usually the same as `primary_email`)
 - `scheduling_cc` — scheduling assistant email (CC'd on all scheduling emails)
 - `scheduling_silent_cc` — silent CC for scheduling visibility (never mentioned in email body)
-- `slack_username` — your Slack username for DM delivery
 - `calendar_id` — usually `"primary"`
 - `signature` — email sign-off (e.g. `"--yourname"`)
 - `workspace` — absolute path to your Hermes workspace (e.g. `/home/youruser/.hermes`)
@@ -70,9 +69,10 @@ hermes skills browse
 Then start the gateway:
 
 ```bash
-hermes gateway setup   # one-time — picks messaging platforms (WhatsApp, Slack, etc.)
 hermes gateway start
 ```
+
+(You do NOT need `hermes gateway setup` for messaging platforms — these skills deliver all output via Microsoft 365 email, not WhatsApp/Slack/Telegram. Skip the gateway messaging setup unless you want it for unrelated skills.)
 
 ## 5. Configure MCP servers in `~/.hermes/config.yaml`
 

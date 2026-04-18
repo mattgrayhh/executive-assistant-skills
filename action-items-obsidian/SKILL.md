@@ -8,7 +8,7 @@ description: "Extract action items from today's Circleback meetings, capture the
 Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `name`, `full_name` — to identify your action items in meeting notes (e.g. "Martin Gonto")
-- `whatsapp` — for result delivery
+- `notification_email` — inbox that receives the action-items summary email
 - `workspace` — absolute path to Hermes workspace
 - `obsidian_vault_path` — absolute path to your local Obsidian vault (just a folder of markdown files)
 - `obsidian_tasks_file` — vault-relative path to tasks file (e.g. `Tasks.md`)
@@ -149,7 +149,7 @@ If action items include intros, follow this exactly:
    - close with `I'll let you two take it from here.` and `{user.signature}`.
 4. **Never replace intro drafts with a generic recap email** like "Great meeting today" when intros were promised.
 5. If recipient emails are known, create Outlook drafts immediately; if any email is missing, still generate the full draft text and report `MISSING_EMAIL: <name>`.
-6. In the WhatsApp result, include an `Intro drafts created:` section listing each intro pair and whether it was drafted in Outlook or blocked by missing email.
+6. In the summary email, include an `Intro drafts created:` section listing each intro pair and whether it was drafted in Outlook or blocked by missing email.
 
 #### First VC / first dealflow call follow-up (MANDATORY)
 When the meeting is a FIRST call with a VC or dealflow company:
@@ -176,8 +176,8 @@ This ensures the Obsidian tasks list stays clean and reflects what actually happ
 
 ## Error handling
 - If `ms365.list-calendar-events` fails: log the error with full args + error (`python3 {user.workspace}/scripts/skill_log.py action-items ERROR "ms365 calendar failed" '{"args": "...", "error": "..."}'`), continue with the other account and/or Circleback-only.
-- If Circleback returns auth errors: report "⚠️ Circleback auth expired, re-run the OAuth flow" and stop.
-- If the vault path is missing or unwritable (wrong `obsidian_vault_path`, permission error): log the error, fall back to writing tasks to `{user.workspace}/state/pending-obsidian-tasks.md`, and alert the user via WhatsApp.
+- If Circleback returns auth errors: email `{user.notification_email}` with subject `[EA] ⚠️ Circleback auth expired` and body "Re-run the OAuth flow on the Hermes host." Then stop.
+- If the vault path is missing or unwritable (wrong `obsidian_vault_path`, permission error): log the error, fall back to writing tasks to `{user.workspace}/state/pending-obsidian-tasks.md`, and email `{user.notification_email}` with subject `[EA] ⚠️ Obsidian vault unreachable` so you know to fix the path.
 - If any step fails, continue with remaining steps when possible — don't abort the entire run for one failure.
 
 ## Deduplication (CRITICAL — prevents duplicate tasks)
@@ -207,10 +207,18 @@ Post-meeting crons fire per-meeting. The daily end-of-day cron processes ALL mee
 If a meeting appears in `processed-meetings-YYYY-MM-DD.json`, do NOT process it again under any circumstances — even if you think the post-meeting cron "might have missed something." The post-meeting cron already handled it. If it had issues, the user will ask for a re-run manually.
 
 ## Output
-- Tasks appended or drafts composed → list tasks with short summary
-- Tasks completed (fulfilled in meetings) → list with ✅
+
+Send ONE summary email via `ms365.send-mail`:
+
+- `from` / `to`: `{user.notification_email}`
+- `subject`: `[EA] Action Items — <YYYY-MM-DD> (<N> tasks, <M> drafts)`
+- `body` sections:
+  - **Tasks appended** → list each with its `#meeting/<short>` tag and due date
+  - **Tasks completed (fulfilled in meetings)** → list with ✅
+  - **Drafts composed** → recipient + intent + Outlook `webLink` for each draft
+  - **Skipped as duplicates** → short list
 - **Always name the specific meetings** processed (e.g. "from Fyxer call, Braintrust weekly, HGP Staff") — never say "from today's meetings"
-- No meetings or no action items → NO_REPLY
+- No meetings or no action items → do not send an email (NO_REPLY to the cron).
 
 ## Transcript cross-check (MANDATORY)
 Circleback returns AI notes + a full transcript. Always cross-check action items against the transcript — not just the summary:

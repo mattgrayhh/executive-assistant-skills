@@ -8,6 +8,7 @@ description: Draft Outlook email replies for the user's Microsoft 365 accounts (
 Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — Microsoft 365 accounts
+- `notification_email` — inbox that receives auto-draft notifications
 - `scheduling_cc` — scheduling assistant email (CC on all scheduling emails, mention in body)
 - `scheduling_silent_cc` — silent CC for scheduling visibility (do NOT mention in email body)
 - `signature` — sign-off for all drafts (e.g. "--yourname")
@@ -79,7 +80,7 @@ After creating a draft via `ms365.create-draft`, the response contains the Outlo
 https://outlook.office.com/mail/deeplink/compose/<id>
 ```
 
-Include it in the WhatsApp notification so the user can open Outlook Web directly on the draft.
+Include it in the notification email so you can open Outlook Web directly on the draft.
 
 ## Trigger Detection
 
@@ -174,26 +175,30 @@ After every external action, log it:
 - Only create Outlook drafts
 - Include the `to` recipients explicitly in the `ms365.create-draft` args
 
-## Auto-Draft WhatsApp Notification (MANDATORY)
-Every time a draft is created automatically (via Outlook hook or any automated trigger), you MUST send a WhatsApp notification to {user.whatsapp} with:
+## Auto-Draft Email Notification (MANDATORY)
+Every time a draft is created automatically (via Outlook hook or any automated trigger), you MUST send a notification email via `ms365.send-mail`:
+
+- `from` / `to`: `{user.notification_email}`
+- `subject`: `[EA] Auto-draft: <recipient name> — <trigger class>`
+- `body`:
 
 ```
-✏️ *Auto-draft created*
+✏️ Auto-draft created
 
-*To:* <recipient name> (<email>)
-*Subject:* <subject>
-*Account:* <account>
-*Trigger:* <intro/scheduling/thanks/positive reply>
+To: <recipient name> (<email>)
+Subject: <subject>
+Account: <account>
+Trigger: <intro/scheduling/thanks/positive reply>
 
-*Draft text:*
-> <full draft body — include the complete text so user can review without opening Outlook>
+Draft text:
+> <full draft body — include the complete text so you can review without opening Outlook>
 
 🔗 <Outlook webLink>
 
-Reply "send" to send, or edit in Outlook.
+Open the link to send or edit in Outlook.
 ```
 
-This is non-optional. The user must be able to read and approve the draft from WhatsApp without opening Outlook.
+This is non-optional. You must be able to read and approve the draft from the notification email alone — no other channel.
 
 ## Notification Policy
 - No routine "no change" notifications

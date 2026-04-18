@@ -17,7 +17,7 @@ After setting up these skills with Hermes, I let go of my human EA and replaced 
 
 ## How it works
 
-Each skill is a markdown file (`SKILL.md`) that tells Hermes exactly how to do the job. Hermes reads the skill, follows the instructions, and delivers results to WhatsApp (or Slack, Telegram, etc.).
+Each skill is a markdown file (`SKILL.md`) that tells Hermes exactly how to do the job. Hermes reads the skill, follows the instructions, and delivers results by emailing you directly via Microsoft 365 (so you get everything in your inbox).
 
 Skills run on cron schedules — meeting prep fires before your first meeting, action items run after your last meeting, and the digest hits every morning. You can also trigger any skill manually by asking Hermes (e.g. `/meeting-prep`) or in natural language.
 
@@ -84,11 +84,10 @@ See `config/user.example.json` for the full template:
 | `full_name` | `"Your Full Name"` | Exact-match attribution in meeting notes |
 | `primary_email` | `"you@outlook.com"` | Microsoft 365 account 1 |
 | `work_email` | `"you@company.com"` | Microsoft 365 account 2 |
-| `whatsapp` | `"+1234567890"` | Digest and alert delivery |
+| `notification_email` | `"you@outlook.com"` | Inbox that receives all EA output emails (usually same as `primary_email`) |
 | `timezone` | `"America/New_York"` | Meeting times, cron scheduling |
 | `scheduling_cc` | `"assistant@company.com"` | CC on scheduling emails |
 | `scheduling_silent_cc` | `"colleague@company.com"` | Silent CC (not mentioned in body) |
-| `slack_username` | `"yourname"` | Slack DM for meeting briefs |
 | `signature` | `"--yourname"` | Email sign-off |
 | `workspace` | `"/home/user/.hermes"` | Absolute path to your Hermes workspace |
 | `obsidian_vault_path` | `"/home/user/Obsidian/MyVault"` | Local vault root (filesystem path) |

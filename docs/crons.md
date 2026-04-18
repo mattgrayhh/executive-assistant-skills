@@ -61,8 +61,7 @@ payload:
     Read ~/executive-assistant-skills/action-items-obsidian/SKILL.md and extract action items
     from today's Circleback meetings into Obsidian. Draft follow-up emails as needed.
 delivery:
-  mode: announce
-  channel: whatsapp
+  mode: none   # the skill emails you the result via ms365.send-mail
 ```
 
 ---
@@ -90,8 +89,7 @@ payload:
     Read ~/executive-assistant-skills/executive-digest/SKILL.md and generate the daily
     executive digest from Microsoft 365 (mail + calendar) and Asana tasks.
 delivery:
-  mode: announce
-  channel: whatsapp
+  mode: none   # the skill emails you the result via ms365.send-mail
 ```
 
 ---
@@ -101,7 +99,7 @@ delivery:
 **When:** 7:00 AM on work days (before the day starts)
 **Skill:** `obsidian-due-drafts`
 
-Checks your Obsidian tasks file for tasks due today (and overdue) that involve pinging, emailing, or following up with someone. Auto-drafts the emails in the correct Outlook account/thread and sends a WhatsApp notification listing what was drafted. Doesn't send anything — just creates drafts for review.
+Checks your Obsidian tasks file for tasks due today (and overdue) that involve pinging, emailing, or following up with someone. Auto-drafts the emails in the correct Outlook account/thread and emails you a summary via M365 listing what was drafted. Doesn't send anything — just creates drafts for review.
 
 `~/.hermes/cron/obsidian-due-drafts.yaml`:
 
@@ -119,12 +117,12 @@ payload:
   model: sonnet
   message: |
     Read ~/executive-assistant-skills/obsidian-due-drafts/SKILL.md and process today's
-    due tasks. Draft emails for any outreach/ping/follow-up tasks and notify via WhatsApp.
+    due tasks. Draft emails for any outreach/ping/follow-up tasks and email the
+    summary to {user.notification_email}.
 
     After done: python3 ~/.hermes/scripts/cron_canary.py ping obsidian-due-drafts
 delivery:
-  mode: announce
-  channel: whatsapp
+  mode: none   # the skill emails you the result via ms365.send-mail
 ```
 
 ---
@@ -135,4 +133,5 @@ delivery:
 - **`model: opus`** for meeting-prep, action-items, and digest — these require deep reasoning and extraction quality. Use `sonnet` only for lightweight tasks (token refresh, health checks).
 - **`thinking: high`** improves extraction and classification quality.
 - All skill paths use `~/executive-assistant-skills/` absolute references so they work correctly from isolated cron sessions regardless of working directory.
+- **Delivery is always email** (`ms365.send-mail` from `{user.notification_email}` to `{user.notification_email}`, subject prefixed `[EA] …`). `delivery.mode: none` at the cron level is intentional — the skill handles its own delivery so it can produce rich markdown bodies and add subject-line context.
 - MCP OAuth tokens (Circleback, Asana, M365) refresh automatically through Hermes' native MCP client — no manual refresh crons needed, unlike the old mcporter flow.

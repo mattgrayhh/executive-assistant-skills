@@ -9,9 +9,8 @@ Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/use
 Extract and use throughout:
 - `name`, `full_name` — user's name
 - `primary_email`, `work_email` — Microsoft 365 accounts to check
-- `whatsapp` — WhatsApp number for delivery
+- `notification_email` — inbox that receives the meeting-prep email
 - `timezone` — IANA timezone (e.g. America/Argentina/Buenos_Aires)
-- `slack_username` — Slack DM target
 - `workspace` — absolute path to Hermes workspace (e.g. /home/user/.hermes)
 - `obsidian_vault_path` — absolute path to your local Obsidian vault
 - `obsidian_meeting_notes_dir` — vault-relative folder where briefs are archived (e.g. `Meetings`)
@@ -50,7 +49,7 @@ These are external meetings — give them full briefs. Don't skip recurring meet
 ## Error handling
 - If `ms365.list-calendar-events` fails for one account: continue with the other account, note "⚠️ [account] calendar unavailable" in output.
 - If Circleback fails: continue without meeting history, note it per meeting.
-- If WhatsApp delivery fails: attempt Slack delivery. If both fail, save to state file and report error.
+- If `ms365.send-mail` fails: save the assembled email body to `{user.workspace}/state/undelivered/meeting-prep-YYYY-MM-DD.md`, log ERROR with the full error, and retry once after 30s. If still failing, leave the file in place so the next run can pick it up.
 
 ## For each meeting
 
@@ -144,15 +143,21 @@ circleback.list_calendar_events --args '{"attendee_email": "<email>", "since": "
 Read `{user.workspace}/style/MEETING_PREP_RULES.md` for additional research steps.
 
 ## Output format
-Send via WhatsApp ({user.whatsapp}) AND Slack (DM to {user.slack_username}). **One message per meeting, chronological order, is mandatory.**
+Send the brief as a single email via `ms365.send-mail`:
 
-**Also archive to Obsidian:** After sending all meeting briefs, write a note into your vault on disk at `{user.obsidian_vault_path}/{user.obsidian_meeting_notes_dir}/YYYY-MM-DD — Meeting Prep.md` containing the full markdown briefs. Use the `Write` tool (or `mkdir -p` + `Write`) to create the file directly — no MCP call required.
+- `from`: `{user.notification_email}`
+- `to`: `{user.notification_email}`
+- `subject`: `[EA] Meeting Prep — <YYYY-MM-DD> (<N> meetings)`
+- `bodyType`: `HTML` or `Text` (Text is fine — Outlook renders the markdown-ish layout cleanly)
+- `body`: intro line + one block per meeting, in chronological order, each block separated by a horizontal rule (`---`)
 
-**Never collapse into a single summary block.** The user expects one standalone message per meeting. Send each meeting brief as a separate message to BOTH WhatsApp and Slack. If one channel fails, still deliver to the other.
+**Also archive to Obsidian:** Immediately after sending the email, write a note into your vault on disk at `{user.obsidian_vault_path}/{user.obsidian_meeting_notes_dir}/YYYY-MM-DD — Meeting Prep.md` containing the full markdown briefs. Use the `Write` tool (or `mkdir -p` + `Write`) to create the file directly — no MCP call required.
 
-Start with a short intro: "📋 *MEETING PREP — <day>* — <N> meetings (<X> external, <Y> internal)"
+**Never collapse the per-meeting sections into one summary block.** Each meeting gets its own clearly-labeled block in the email body; the reader skims headers in chronological order.
 
-Then one message per meeting in this format — use bold subsections and blank lines between each section for readability:
+Start the email body with a short intro: "📋 **MEETING PREP — <day>** — <N> meetings (<X> external, <Y> internal)"
+
+Then one block per meeting in this format — use bold subsection labels and blank lines between each section for readability:
 ```
 *<number>. <Name/Company> — <local time>*
 
@@ -177,7 +182,7 @@ If a meeting already happened, prefix with ✅ and keep brief.
 If there's a schedule conflict, flag with ⚠️.
 
 ## Save full brief
-Save the full detailed brief to `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` (for local dedup/state), archive a copy in Obsidian per the step above, and also send it as a file attachment via WhatsApp.
+Save the full detailed brief to `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` (for local dedup/state) and archive a copy in Obsidian per the step above. The same markdown is the email body — no attachment needed.
 
 ## ⚠️ CRON CREATION (CRITICAL — DO NOT SKIP)
 This section is NON-OPTIONAL. Cron creation MUST happen for every run with meetings. If you run out of context or time before completing this section, the entire run is a FAILURE.
@@ -190,16 +195,18 @@ Log: `python3 {user.workspace}/scripts/skill_log.py meeting-prep INFO "Starting 
 After generating all briefs, create a one-shot cron job for EACH meeting that fires 5 minutes before start time. The cron job should:
 1. Read `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md`
 2. Find the section for that specific meeting
-3. Resend the FULL formatted brief for that meeting (same format as the original WhatsApp message — bold subsection labels, blank lines, links, etc.)
-4. Prefix with "⏰ *5 min reminder*\n\n" then the full brief
+3. Send the FULL formatted brief for that meeting via `ms365.send-mail`
+   - `from` / `to`: `{user.notification_email}`
+   - `subject`: `[EA] ⏰ 5-min reminder: <meeting title> (<local time>)`
+   - `body`: the verbatim meeting block
 
 **Hard formatting contract (no exceptions):**
 - The reminder body must be copied verbatim from `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` for that meeting block.
 - Do NOT rewrite, summarize, translate, normalize, or reformat any part of that block.
 - Keep language exactly as generated in the source brief.
-- Only allowed change is adding the `⏰ *5 min reminder*` prefix.
+- Only allowed change is the subject-line prefix. The body is pasted unchanged.
 
-Use `hermes cron add` with `--at` set to 5 min before meeting time, `--delete-after-run`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. The `--no-deliver` flag prevents the announce mechanism from sending a separate message — the task sends WhatsApp directly.
+Use `hermes cron add` with `--at` set to 5 min before meeting time, `--delete-after-run`, and `--no-deliver`. The `--no-deliver` flag prevents the announce mechanism from sending anything — the task sends the reminder email directly via `ms365.send-mail`.
 
 **Hard requirement:** after creating jobs, run `hermes cron list` and verify the expected number of `pre-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
 
@@ -208,9 +215,9 @@ Log each created cron: `python3 {user.workspace}/scripts/skill_log.py meeting-pr
 ## Post-meeting action items + drafts
 After generating all briefs, create a one-shot cron job for EACH meeting that fires 10 minutes after the meeting END time. The cron task should reference the action-items-obsidian skill:
 
-Task: "Read and follow ~/executive-assistant-skills/action-items-obsidian/SKILL.md. Process ONLY the meeting titled '<meeting title>' that ended around <end time>. Send results to WhatsApp ({user.whatsapp})."
+Task: "Read and follow ~/executive-assistant-skills/action-items-obsidian/SKILL.md. Process ONLY the meeting titled '<meeting title>' that ended around <end time>. Email the summary to {user.notification_email}."
 
-Use `hermes cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. Name them `post-meeting-<short-name>`.
+Use `hermes cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`, and `--no-deliver`. Name them `post-meeting-<short-name>`.
 
 **Hard requirement:** after creating jobs, run `hermes cron list` and verify the expected number of `post-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
 
@@ -218,7 +225,7 @@ Log each created cron: `python3 {user.workspace}/scripts/skill_log.py meeting-pr
 
 Log final count: `python3 {user.workspace}/scripts/skill_log.py meeting-prep INFO "Cron creation complete" '{"pre_meeting": N, "post_meeting": M, "expected": E}'`
 
-**If cron count doesn't match expected:** Log ERROR and send WhatsApp alert: "⚠️ Meeting prep: only created X/Y pre-meeting and A/B post-meeting crons. Some reminders/action-items may be missing."
+**If cron count doesn't match expected:** Log ERROR and send an email to `{user.notification_email}` with subject `[EA] ⚠️ Meeting prep incomplete` and body "Only created X/Y pre-meeting and A/B post-meeting crons. Some reminders/action-items may be missing."
 
 ### Deduplication (MANDATORY)
 After processing, the cron MUST append the meeting title to `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` (array of meeting titles already processed). This lets the end-of-day catch-all skip them.
@@ -233,7 +240,7 @@ This prevents the scenario where a post-meeting cron and the daily end-of-day cr
 ## Sanity checks
 - **Calendar is source of truth for meeting count**: Cross-reference email threads with the actual calendar events. If an invite was moved/rescheduled, it's still ONE meeting — don't count it as multiple. Check the Outlook event ID, not email threads, to determine unique meetings.
 - **First call vs follow-up**: Verify by checking if there is an ACTUAL past Circleback meeting with this specific person (exact name match). Rescheduled invites or multiple scheduling emails do NOT make it a follow-up. Only a previously held meeting does.
-- **Message count check (MANDATORY):** Number of sent meeting-brief messages must equal number of meetings with attendees (external + internal). If not equal, send missing meeting messages immediately.
+- **Email sent check (MANDATORY):** Exactly ONE meeting-prep email must be sent per run. The email body must contain a block for every meeting with attendees (external + internal). If any meeting block is missing from the sent body, send a follow-up email with the missing blocks immediately.
 - **Cron count check (MANDATORY):** Number of `pre-meeting-` jobs and `post-meeting-` jobs created for today must each equal number of meetings with attendees (external + internal).
 
 ### Automated assertions (MANDATORY)

@@ -1,6 +1,6 @@
 ---
 name: obsidian-due-drafts
-description: Check your Obsidian tasks file for tasks due today (and overdue) that involve pinging, emailing, or following up with someone. Auto-draft the emails in Outlook using meeting context and notify via WhatsApp. Use when running the daily due-drafts cron, or when user asks to process email tasks from Obsidian.
+description: Check your Obsidian tasks file for tasks due today (and overdue) that involve pinging, emailing, or following up with someone. Auto-draft the emails in Outlook using meeting context and email yourself a summary via Microsoft 365. Use when running the daily due-drafts cron, or when user asks to process email tasks from Obsidian.
 ---
 # Obsidian Due-Today Email Drafts
 
@@ -8,7 +8,7 @@ description: Check your Obsidian tasks file for tasks due today (and overdue) th
 Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — Microsoft 365 accounts
-- `whatsapp` — for notification delivery
+- `notification_email` — inbox that receives the due-drafts summary email
 - `workspace` — absolute path to Hermes workspace
 - `signature` — email signature
 - `obsidian_vault_path` — absolute path to your local Obsidian vault
@@ -70,28 +70,27 @@ For each task:
 - If the task says "intro" — follow intro format from email-drafting skill
 - If recipient email can't be found — report it, don't skip silently
 
-### 4. Notify via WhatsApp
-Send a single WhatsApp message to {user.whatsapp} with:
+### 4. Notify via email
+Send a single summary email via `ms365.send-mail`:
+
+- `from` / `to`: `{user.notification_email}`
+- `subject`: `[EA] Due-Today Drafts — <YYYY-MM-DD> (<N> drafts)`
+- `body`:
 
 ```
-📬 *Due-today drafts*
+📬 Due-today drafts
 
 <N> email drafts created from today's Obsidian tasks:
 
-1. **<recipient>** — <one-line intent> (draft in <account>)
+1. <recipient> — <one-line intent> (draft in <account>) — <Outlook webLink>
 2. ...
 
 Review and send when ready.
 ```
 
-If tasks exist but none are outreach-type, report:
-```
-📋 *Due-today tasks (no drafts needed)*
+If tasks exist but none are outreach-type, send an email with subject `[EA] Due-Today Tasks — <YYYY-MM-DD> (no drafts needed)` and a body that lists today's tasks as a quick reference.
 
-<list of today's tasks — quick reference>
-```
-
-If no tasks due today → NO_REPLY (skip notification entirely).
+If no tasks due today → do not send an email (NO_REPLY to the cron).
 
 ### 5. Infrastructure
 ```bash
@@ -99,12 +98,12 @@ python3 {user.workspace}/scripts/cron_canary.py ping obsidian-due-drafts
 ```
 
 ## Error handling
-- If the tasks file is missing or unreadable: notify via WhatsApp "⚠️ Obsidian due-drafts failed — could not read <path>: <error>", ping canary, exit.
+- If the tasks file is missing or unreadable: email `{user.notification_email}` with subject `[EA] ⚠️ Due-drafts failed` and body "Could not read <path>: <error>", ping canary, exit.
 - If Circleback lookup fails for a task: continue without meeting context — draft from email history + task content only.
-- If Outlook draft creation fails for one task: continue with remaining tasks, report failures in the notification.
+- If Outlook draft creation fails for one task: continue with remaining tasks, report failures in the summary email.
 
 ## Rules
 - Don't check off the tasks — just draft and notify. User decides when to send and ticks the checkbox manually (or via the email-drafting skill's "after send → complete task" rule).
-- Before drafting, check if the user already replied: `ms365.search-mail-messages --args '{"user": "<account>", "query": "to:<recipient> in:sent", "top": 5}'` and filter by recent (last 14 days). If recent sent mail exists in the same conversation, skip drafting and note "already replied" in the notification.
+- Before drafting, check if the user already replied: `ms365.search-mail-messages --args '{"user": "<account>", "query": "to:<recipient> in:sent", "top": 5}'` and filter by recent (last 14 days). If recent sent mail exists in the same conversation, skip drafting and note "already replied" in the summary email.
 - Check for existing drafts before creating: `ms365.list-drafts --args '{"user": "<account>"}'`. If a draft already exists for the same conversationId or recipient + subject, skip and note "draft already exists."
-- Overdue outreach tasks get a ⚠️ prefix in the notification.
+- Overdue outreach tasks get a ⚠️ prefix in the summary email.

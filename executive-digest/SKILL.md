@@ -1,6 +1,6 @@
 ---
 name: executive-digest
-description: "Generate the daily executive digest — a single WhatsApp summary of everything needing attention: stalled scheduling, pending intros, unanswered emails (Microsoft 365), promised follow-ups, open Asana tasks, and upcoming calendar events. Use when running the daily digest cron, or when user asks for a status digest, daily summary, \"what's pending\", or \"catch me up\"."
+description: "Generate the daily executive digest — a single email summary of everything needing attention: stalled scheduling, pending intros, unanswered emails (Microsoft 365), promised follow-ups, open Asana tasks, and upcoming calendar events. Use when running the daily digest cron, or when user asks for a status digest, daily summary, \"what's pending\", or \"catch me up\"."
 ---
 # Daily Executive Digest
 
@@ -8,7 +8,7 @@ description: "Generate the daily executive digest — a single WhatsApp summary 
 Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `primary_email`, `work_email` — both Microsoft 365 accounts to check
-- `whatsapp` — for delivery
+- `notification_email` — inbox that receives the digest email
 - `workspace` — absolute path to Hermes workspace
 - `asana_workspace_gid` — Asana workspace to query
 - `asana_default_project_gid` — (optional) default project to scope Asana queries; if empty, query across all projects in the workspace
@@ -146,9 +146,11 @@ For sections not explicitly covered above, follow `{user.workspace}/style/DIGEST
 
 ### 5. Compile and send
 - Format per `{user.workspace}/style/DIGEST_RULES.md`
-- If items exist → send via WhatsApp to {user.whatsapp}
-- **Also send to Chief of Staff (optional):** If `{user.chief_of_staff.slack_dm_channel}` is configured, send the full digest as a single Slack DM. Prefix with "📋 *Executive Digest — <date>*".
+- If items exist → send ONE email via `ms365.send-mail`:
+  - `from` / `to`: `{user.notification_email}`
+  - `subject`: `[EA] Executive Digest — <YYYY-MM-DD>`
+  - `body`: the full digest markdown, organized by section (Asana open tasks, upcoming calendar, pending intros/follow-ups, unanswered inbound, promised follow-ups still open). Use clear `## section` headings so you can skim on mobile Outlook.
 - Update `{user.workspace}/state/digest-state.json` with items surfaced
 - Nothing needs attention:
   - **Cron context**: NO_REPLY (don't send anything)
-  - **User asked for digest**: Send "Nothing needs attention today ✅"
+  - **User asked for digest** (interactive): respond in the terminal with "Nothing needs attention today ✅" (no email needed in interactive mode)
