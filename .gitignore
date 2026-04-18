@@ -1,7 +1,7 @@
 # Personal config — each user creates their own from user.example.json
 config/user.json
 
-# State and logs (local only)
+# State and logs (local only) — live under ~/.hermes/{state,logs} but guard against accidental commits here
 state/
 logs/
 *.log

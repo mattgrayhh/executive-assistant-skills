@@ -6,12 +6,17 @@
   "timezone": "America/New_York",
   "work_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   "availability_window": "09:00-18:00",
-  "primary_email": "you@example.com",
+  "primary_email": "you@outlook.com",
   "work_email": "you@yourcompany.com",
   "scheduling_cc": "assistant@yourcompany.com",
   "scheduling_silent_cc": "colleague@yourcompany.com",
   "slack_username": "yourusername",
   "calendar_id": "primary",
   "signature": "--yourname",
-  "workspace": "/home/youruser/.openclaw/workspace"
+  "workspace": "/home/youruser/.hermes",
+  "obsidian_vault_path": "/home/youruser/Obsidian/MyVault",
+  "obsidian_tasks_file": "Tasks.md",
+  "obsidian_meeting_notes_dir": "Meetings",
+  "asana_workspace_gid": "1199999999999999",
+  "asana_default_project_gid": ""
 }

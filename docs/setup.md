@@ -19,185 +19,189 @@ cp ~/executive-assistant-skills/config/user.example.json ~/executive-assistant-s
 Edit `user.json` with your personal values — it's gitignored and never committed.
 
 Fields to fill in:
-- `name` / `full_name` — your name (used in Granola queries)
+- `name` / `full_name` — your name (used in Circleback queries)
 - `whatsapp` — your WhatsApp phone number (e164 format, e.g. `+1234567890`)
 - `timezone` — IANA timezone string (e.g. `America/Argentina/Buenos_Aires`)
 - `work_days` — your working days (e.g. `["Monday", "Wednesday"]`)
 - `availability_window` — hours available for meetings (e.g. `"15:00-19:00"`)
-- `primary_email` — personal Gmail account
-- `work_email` — work Gmail account
+- `primary_email` — personal Microsoft 365 account
+- `work_email` — work Microsoft 365 account
 - `scheduling_cc` — scheduling assistant email (CC'd on all scheduling emails)
 - `scheduling_silent_cc` — silent CC for scheduling visibility (never mentioned in email body)
 - `slack_username` — your Slack username for DM delivery
 - `calendar_id` — usually `"primary"`
 - `signature` — email sign-off (e.g. `"--yourname"`)
-- `workspace` — absolute path to your OpenClaw workspace (e.g. `/home/youruser/.openclaw/workspace`)
+- `workspace` — absolute path to your Hermes workspace (e.g. `/home/youruser/.hermes`)
+- `obsidian_vault_path` — absolute path to your Obsidian vault root
+- `obsidian_tasks_file` — vault-relative path where EA tasks live (e.g. `Tasks.md`)
+- `obsidian_meeting_notes_dir` — vault-relative folder for meeting briefs (e.g. `Meetings`)
+- `asana_workspace_gid` — Asana workspace ID the digest should pull from
+- `asana_default_project_gid` — optional default project GID (leave empty to search across all projects)
 
-## 3. Configure OpenClaw to load these skills
+## 3. Install Hermes Agent
 
-Edit `~/.openclaw/openclaw.json`. Find the `"skills"` key and add `"load"`:
+Follow the official install guide: https://hermes-agent.nousresearch.com/docs/quickstart/installation
 
-```json
-{
-  "skills": {
-    "load": {
-      "extraDirs": ["~/executive-assistant-skills"]
-    },
-    "install": {
-      "nodeManager": "npm"
-    }
-  }
-}
-```
-
-Then restart the gateway:
+Then initialize the workspace:
 
 ```bash
-openclaw gateway restart
+mkdir -p ~/.hermes
+cp cli-config.yaml.example ~/.hermes/config.yaml
+touch ~/.hermes/.env
 ```
 
-## 4. Build your email style guide
+## 4. Load these skills into Hermes
+
+Hermes auto-discovers any `SKILL.md` under `~/.hermes/skills/`. Symlink each skill directory:
+
+```bash
+mkdir -p ~/.hermes/skills
+for d in meeting-prep action-items-obsidian email-drafting executive-digest obsidian-due-drafts humanizer; do
+  ln -s ~/executive-assistant-skills/$d ~/.hermes/skills/$d
+done
+```
+
+Verify the skills are discoverable:
+
+```bash
+hermes skills browse
+```
+
+Then start the gateway:
+
+```bash
+hermes gateway setup   # one-time — picks messaging platforms (WhatsApp, Slack, etc.)
+hermes gateway start
+```
+
+## 5. Configure MCP servers in `~/.hermes/config.yaml`
+
+Hermes has a first-party native MCP client. Add these servers to the `mcp_servers` section of `config.yaml`:
+
+```yaml
+mcp_servers:
+  ms365:
+    transport: stdio
+    command: npx
+    args: ["-y", "@softeria/ms-365-mcp-server"]
+    env:
+      MS365_MCP_CLIENT_ID: "${MS365_MCP_CLIENT_ID}"
+
+  obsidian:
+    transport: stdio
+    command: npx
+    args: ["-y", "@cyanheads/obsidian-mcp-server"]
+    env:
+      OBSIDIAN_API_KEY: "${OBSIDIAN_API_KEY}"
+      OBSIDIAN_BASE_URL: "http://127.0.0.1:27123"
+
+  circleback:
+    transport: http
+    url: "https://app.circleback.ai/api/mcp"
+
+  asana:
+    transport: http
+    url: "https://mcp.asana.com/v2/mcp"
+```
+
+Put secrets in `~/.hermes/.env`:
+
+```bash
+MS365_MCP_CLIENT_ID=<your Azure AD app registration client ID>
+OBSIDIAN_API_KEY=<API key from the Obsidian Local REST API plugin>
+```
+
+Hermes reloads MCP servers on gateway restart.
+
+## 6. Build your email style guide
 
 The `email-drafting` skill writes emails in your voice — but it needs to learn your voice first. You do this by analyzing your sent emails and creating a style guide.
 
 ### Generate the style files
 
-Ask your Claw:
+Ask Hermes:
 
-> "Read my last 200 sent emails from both accounts and create an email writing style guide. Analyze: sentence length, greeting patterns, sign-off patterns, vocabulary, tone, punctuation habits, and common phrases. Save it to `style/EMAIL_STYLE.md`."
+> "Read my last 200 sent emails from both Microsoft 365 accounts (use the ms365 MCP) and create an email writing style guide. Analyze: sentence length, greeting patterns, sign-off patterns, vocabulary, tone, punctuation habits, and common phrases. Save it to `~/.hermes/style/EMAIL_STYLE.md`."
 
 Then:
 
-> "Now create `style/EMAIL_TEMPLATES.md` with template patterns for the email types I send most: intros, follow-ups, scheduling, thank-you notes, VC/investor replies. Base each template on real examples from my sent mail."
+> "Now create `~/.hermes/style/EMAIL_TEMPLATES.md` with template patterns for the email types I send most: intros, follow-ups, scheduling, thank-you notes, VC/investor replies. Base each template on real examples from my sent mail."
 
 Finally, create an empty feedback log:
 
 ```bash
-touch ~/.openclaw/workspace/style/FEEDBACK_LOG.md
+mkdir -p ~/.hermes/style
+touch ~/.hermes/style/FEEDBACK_LOG.md
 ```
 
-This is where corrections accumulate over time. Every time you tell your Claw "that draft was too formal" or "I wouldn't say it that way," it logs the feedback. Latest corrections always override the original style guide.
+This is where corrections accumulate over time. Every time you tell Hermes "that draft was too formal" or "I wouldn't say it that way," it logs the feedback. Latest corrections always override the original style guide.
 
 ### What you end up with
 
 ```
-~/.openclaw/workspace/style/
+~/.hermes/style/
 ├── EMAIL_STYLE.md          # Your writing voice (auto-generated from sent mail)
 ├── EMAIL_TEMPLATES.md      # Template patterns for common email types
-├── FEEDBACK_LOG.md          # Running log of your corrections (starts empty)
-├── DIGEST_RULES.md          # Format rules for the executive digest
+├── FEEDBACK_LOG.md         # Running log of your corrections (starts empty)
+├── DIGEST_RULES.md         # Format rules for the executive digest
 └── MEETING_PREP_RULES.md   # Additional research steps for meeting prep
 ```
 
 The digest and meeting prep rules files are optional — create them if you want to customize the output format beyond the defaults in the skill files.
 
-## 5. Keep USER.md in sync
+## 7. Keep USER.md in sync
 
-Your OpenClaw workspace should have a `USER.md` with the same info as `user.json` in human-readable form. Skills read `user.json` programmatically; `USER.md` provides context to the agent in every session. Keep both in sync when you update one.
+Your Hermes workspace should have a `USER.md` with the same info as `user.json` in human-readable form. Skills read `user.json` programmatically; `USER.md` provides context to the agent in every session. Keep both in sync when you update one.
 
-## 5. Install mcporter
+## 8. Authenticate Microsoft 365
 
-```bash
-npm i -g mcporter
-```
-
-Create `~/.openclaw/workspace/config/mcporter.json` (or wherever mcporter expects its config):
-
-```json
-{
-  "servers": {
-    "granola": {
-      "type": "http",
-      "url": "https://mcp.granola.ai/mcp"
-    },
-    "grain": {
-      "type": "http",
-      "url": "https://mcp.grain.com/mcp"
-    },
-    "todoist": {
-      "type": "http",
-      "url": "https://ai.todoist.net/mcp"
-    }
-  }
-}
-```
-
-## 6. Authenticate Granola (OAuth on headless VPS)
-
-Granola uses OAuth. On a headless server (no browser), the flow is:
-
-1. Run any mcporter call — it triggers OAuth and starts a local callback server:
-   ```bash
-   mcporter list-tools granola
-   ```
-2. If it crashes on `xdg-open`, note the auth URL and callback port from the output
-3. From your local machine, SSH tunnel the callback port:
-   ```bash
-   ssh -R <PORT>:localhost:<PORT> user@your-vps
-   ```
-4. Open the auth URL in your local browser, complete OAuth
-5. Callback hits the SSH tunnel → mcporter receives the authorization code
-6. Tokens saved to `~/.mcporter/credentials.json`
-
-### Granola token refresh
-
-Granola tokens expire every ~6 hours. Set up the refresh cron (see `docs/crons.md`).
-
-If the refresh token itself expires (e.g. after an outage), re-run:
-```bash
-mcporter auth granola --reset
-```
-
-## 7. Authenticate Grain (OAuth)
-
-Same OAuth flow as Granola:
-```bash
-mcporter list-tools grain
-```
-
-## 8. Authenticate Todoist
-
-Todoist tokens last ~10 years. Same OAuth flow:
-```bash
-mcporter list-tools todoist
-```
-
-## 9. Install todoist-cli
+On first invocation, the ms365 MCP starts an OAuth device-code flow. Trigger it once with any call:
 
 ```bash
-npm install -g todoist-cli  # or the package name used in your setup
+hermes tools call ms365.list-mail-folders --args '{}'
 ```
 
-Create `~/.openclaw/workspace/.env` with your Todoist API token:
+Follow the device-code URL, sign in with your primary account, approve the scopes. Tokens land in the MCP's auth store. Repeat for the work account by switching the active profile (see ms365 MCP README).
+
+## 9. Authenticate Circleback
+
 ```bash
-TODOIST_API_TOKEN=your_token_here
+hermes tools call circleback.list_meetings --args '{"limit": 1}'
 ```
 
-## 10. Set up Google workspace CLI (gog)
+Circleback uses OAuth with dynamic client registration. Follow the auth URL printed to the terminal. Tokens are stored by Hermes.
 
-Used for Gmail and Calendar access:
+## 10. Authenticate Obsidian
+
+Install the "Local REST API" community plugin inside Obsidian, copy the generated API key, put it in `~/.hermes/.env` as `OBSIDIAN_API_KEY`. Make sure Obsidian is running whenever the agent needs vault access.
+
+Verify:
+
 ```bash
-# Follow gog setup instructions in workspace/skills/gog/SKILL.md
+hermes tools call obsidian.obsidian_list_files_in_vault --args '{}'
 ```
 
-Authenticate both accounts:
+## 11. Authenticate Asana
+
 ```bash
-gog auth login --account your-primary@email.com
-gog auth login --account your-work@email.com
+hermes tools call asana.search_tasks --args '{"workspace": "<your workspace gid>", "text": "test"}'
 ```
 
-## 11. Verify everything works
+Asana MCP v2 uses OAuth; tokens expire every hour but refresh automatically. Follow the auth URL on first call.
+
+## 12. Verify everything works
 
 ```bash
-mcporter list-tools granola   # should list meeting tools
-mcporter list-tools grain     # should list transcript tools
-mcporter list-tools todoist   # should list task tools
-gog gmail list "in:inbox" --account your@email.com --max 1 --json
-source ~/.openclaw/workspace/.env && todoist-cli today --json  # should list today's tasks
+hermes tools call ms365.list-mail-messages --args '{"top": 1}'
+hermes tools call circleback.list_meetings --args '{"limit": 1}'
+hermes tools call obsidian.obsidian_read_file --args '{"filepath": "Tasks.md"}'
+hermes tools call asana.search_tasks --args '{"workspace": "<gid>", "text": "test"}'
 ```
 
 Then set up cron jobs per `docs/crons.md`.
 
 ### Skill-specific notes
 
-- **todoist-due-drafts** requires both `todoist-cli` (step 9) and `gog` (step 10) to be working. It reads Todoist tasks, searches Gmail for existing threads, and creates drafts — so all three auth flows must be complete. It also depends on the `email-drafting` skill's style guide (step 4).
+- **obsidian-due-drafts** requires both Obsidian MCP (step 10) and ms365 MCP (step 8) to be working. It reads tasks from your Obsidian tasks file, searches Outlook for existing threads, and creates drafts. It also depends on the `email-drafting` skill's style guide (step 6).
+- **executive-digest** reads from ms365 (mail + calendar) and Asana (tasks). Obsidian is not queried by the digest — Asana is the task source.
+- **action-items-obsidian** writes tasks into your Obsidian vault. The exact location is controlled by `obsidian_tasks_file`. If you prefer daily-note capture, change that field to a Templater-resolved daily path and update the skill accordingly.

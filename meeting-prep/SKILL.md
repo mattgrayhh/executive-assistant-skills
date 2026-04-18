@@ -1,6 +1,6 @@
 ---
 name: meeting-prep
-description: Prepare briefings for today's meetings — attendee research, email history, past meeting notes, LinkedIn, and company context. Use when running the daily meeting prep cron, or when user asks to prepare for meetings, review who they're meeting with, or get context on upcoming calls.
+description: Prepare briefings for today's meetings — attendee research, email history (Microsoft 365), past meeting notes (Circleback), LinkedIn, and company context. Use when running the daily meeting prep cron, or when user asks to prepare for meetings, review who they're meeting with, or get context on upcoming calls.
 ---
 # Daily Meeting Prep
 
@@ -8,35 +8,37 @@ description: Prepare briefings for today's meetings — attendee research, email
 Read `../config/user.json` (resolves to `~/executive-assistant-skills/config/user.json`).
 Extract and use throughout:
 - `name`, `full_name` — user's name
-- `primary_email`, `work_email` — Gmail accounts to check
+- `primary_email`, `work_email` — Microsoft 365 accounts to check
 - `whatsapp` — WhatsApp number for delivery
 - `timezone` — IANA timezone (e.g. America/Argentina/Buenos_Aires)
 - `slack_username` — Slack DM target
-- `workspace` — absolute path to OpenClaw workspace (e.g. /home/user/.openclaw/workspace)
+- `workspace` — absolute path to Hermes workspace (e.g. /home/user/.hermes)
+- `obsidian_meeting_notes_dir` — folder in your vault where briefs are archived
 
 Do not proceed until you have these values.
 
 ## Debug Logging (MANDATORY)
-Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py meeting-prep <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every external call (gog, mcporter, Granola, web search). On any error, log the full command and stderr before continuing.
+Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py meeting-prep <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback, obsidian) and every web search. On any error, log the full tool args and error before continuing.
 
 ## Scope
 - Timezone: {user.timezone}
-- Calendars: primary of {user.primary_email} AND {user.work_email}
+- Calendars: primary of {user.primary_email} AND {user.work_email} (via `ms365` MCP)
 - Today's meetings only
 
-**Timezone note:** Use explicit ART-bounded ISO8601 timestamps for calendar queries, NOT `--date`. Example: `gog calendar list primary --account <email> --from "2026-03-03T00:00:00-03:00" --to "2026-03-04T00:00:00-03:00" --json`. The `--date` flag uses UTC boundaries which misaligns with ART.
+**Timezone note:** Use explicit timezone-bounded ISO8601 timestamps for calendar queries. Example: call `ms365.list-calendar-events` with `startDateTime: "2026-03-03T00:00:00-03:00"` and `endDateTime: "2026-03-04T00:00:00-03:00"`. Do NOT rely on implicit "today" boundaries — they use UTC.
+
 - **ALL meetings with attendees** — both external and internal
 - Skip personal/solo events with no attendees (e.g. "Personal Trainer", "Golf", all-day reminders)
 
 ## Meeting types
 
 ### External meetings (attendees outside your email domains)
-Full research brief (email context, Granola, LinkedIn, company research) — see below.
+Full research brief (email context, Circleback, LinkedIn, company research) — see below.
 
-### Internal meetings (all attendees from your email domains: hypergrowthpartners.com, growth.li)
+### Internal meetings (all attendees from your email domains)
 Lighter brief — no LinkedIn/company research needed, but still include:
 - Attendee list
-- Granola context from previous instances of this recurring meeting
+- Circleback context from previous instances of this recurring meeting
 - Recent email threads related to the meeting topic/agenda
 - Any open action items from last time
 - Format: same structure but skip LinkedIn/company sections
@@ -45,8 +47,8 @@ Lighter brief — no LinkedIn/company research needed, but still include:
 These are external meetings — give them full briefs. Don't skip recurring meetings just because they're familiar.
 
 ## Error handling
-- If `gog calendar` fails for one account: continue with the other account, note "⚠️ [account] calendar unavailable" in output.
-- If Granola/Grain fails: continue without meeting history, note it per meeting.
+- If `ms365.list-calendar-events` fails for one account: continue with the other account, note "⚠️ [account] calendar unavailable" in output.
+- If Circleback fails: continue without meeting history, note it per meeting.
 - If WhatsApp delivery fails: attempt Slack delivery. If both fail, save to state file and report error.
 
 ## For each meeting
@@ -54,20 +56,22 @@ These are external meetings — give them full briefs. Don't skip recurring meet
 ### 1. Event basics
 Title, local time ({user.timezone}), attendees.
 
-**RSVP status (MANDATORY):** For each attendee, check `responseStatus` from the calendar event:
+**RSVP status (MANDATORY):** For each attendee, inspect `attendees[].status.response` from the Outlook event:
 - `accepted` → no flag needed
-- `needsAction` → flag as "⚠️ hasn't responded"
+- `notResponded` → flag as "⚠️ hasn't responded"
 - `declined` → flag as "❌ declined"
-- `tentative` → flag as "❓ tentative"
+- `tentativelyAccepted` → flag as "❓ tentative"
 
-If ANY non-organizer external attendee has NOT accepted (`needsAction`, `tentative`, or `declined`), add a visible line in the brief:
+If ANY non-organizer external attendee has NOT accepted, add a visible line in the brief:
 > ⚠️ *RSVP:* <name> hasn't accepted yet
 
 This is informational — it doesn't mean they won't join, but it's useful to know ahead of time, especially for first calls or important meetings.
 
 ### 2. Email context (90-day lookback, with historical fallback)
-Search Gmail both accounts for exchanges with attendees. For EACH attendee, search using these strategies in order:
-1. **Email address** (primary — from calendar invite): `from:<email> OR to:<email>`
+Search Outlook on both accounts for exchanges with attendees using the `ms365` MCP. For EACH attendee, try these strategies in order:
+
+1. **Email address** (primary — from calendar invite):
+   `ms365.search-mail-messages --args '{"query": "from:<email> OR to:<email>", "top": 20}'`
 2. **Full name**: `"firstname lastname"`
 3. **First name + "intro"**: `"intro firstname"` (catches informal intro subjects)
 4. **First name + company**: `"firstname companyname"`
@@ -79,38 +83,52 @@ The attendee's email from the calendar invite is the most reliable identifier �
 6. Also check threads where a third party CC'd/introduced the attendee
 
 **Recent email context** (after intro discovery):
-7. Pull the most recent email threads with this attendee (by email address) to surface any recent updates, asks, or context leading into today's call
+7. Pull the most recent threads with this attendee (by email address) to surface any recent updates, asks, or context leading into today's call.
 
 **Historical fallback** (if no results from 90-day search):
-8. Run a broader search with NO date filter: `from:<email> OR to:<email>` — this catches long-standing relationships where the last email was months/years ago. If older threads exist, this is NOT a first call — note the relationship history.
+8. Run a broader search with NO date filter — `ms365.search-mail-messages` without a date scope. This catches long-standing relationships where the last email was months/years ago. If older threads exist, this is NOT a first call — note the relationship history.
 
 - First call vs follow-up? Base this on ALL email history found (including historical), not just 90-day window
 - **If first call: MUST include "who introduced + when" (date) if found in email; if not found, explicitly say "No intro trail found in email"**
 - If follow-up: extract updates since last call
 - **If email contains a concrete commercial trigger** (pricing, deliverables, scope, budget, urgency, timeline, decision-maker request), include it explicitly in the brief
 
-### 3. Granola context
+### 3. Circleback context
 **Search by ATTENDEE, not by meeting title.** The same recurring meeting may have different titles week to week. Always search by the attendee's name or email to find all past meetings with them.
 
-```bash
-# Primary: search by attendee name
-mcporter call granola.query_granola_meetings query="meetings with [attendee full name]"
+Call the Circleback MCP:
 
-# Fallback: search by company if attendee name yields no results
-mcporter call granola.query_granola_meetings query="meetings with [company name]"
+```
+circleback.search_meetings --args '{"query": "meetings with <attendee full name>", "limit": 10}'
 ```
 
-**Cross-check with `list_meetings`:** If the query results seem stale (oldest match is weeks old but you expect more recent), also run `list_meetings` for `last_week` or `this_week` and scan the participant lists for the attendee's email or name. This catches meetings where the title doesn't mention the attendee or company.
+Fallback: if the attendee name yields no results, search by company.
+
+```
+circleback.search_meetings --args '{"query": "meetings with <company name>", "limit": 10}'
+```
+
+Then fetch the full transcript / AI notes for the best match:
+
+```
+circleback.get_meeting --args '{"meeting_id": "<id>"}'
+```
+
+Circleback covers meetings + calendar + email in one connector, so you can also cross-reference its calendar view for recent events the attendee joined:
+
+```
+circleback.list_calendar_events --args '{"attendee_email": "<email>", "since": "<ISO date 3 weeks ago>"}'
+```
 
 - **Recent (< 3 weeks):** Provide a richer summary (not one-liner): decisions made, key tensions, explicit action items, owners, and unresolved questions
 - **Older (3+ weeks):** Broader context — relationship history, past decisions, recurring themes
 - **No attendee match but company match exists:** Use company-level context and label it clearly as company-level
 - **No results / first meeting:** Note that, provide email context instead
-- Preserve citation links `[[N]](url)`
+- Preserve any source links Circleback returns (`[[N]](url)`)
 - Include a short explicit line: **"Why this meeting now"** based on prior action items or current email trigger
-- **Exact name matching**: When attributing Granola results to an attendee, verify BOTH first AND last name match exactly. Different people can share a first name — never assume a match based on first name alone.
-- **Auth failure:** If Granola returns an auth error, run `mcporter auth granola --reset` and retry once. If still failing, note "⚠️ Granola unavailable" and continue without it.
-- **Empty summary:** If Granola returns a meeting record but with no/empty summary, note "Previous meeting found but no summary available" — don't silently skip it.
+- **Exact name matching**: When attributing Circleback results to an attendee, verify BOTH first AND last name match exactly. Different people can share a first name — never assume a match based on first name alone.
+- **Auth failure:** If Circleback returns an auth error, re-run the OAuth flow (`hermes tools call circleback.list_meetings --args '{"limit": 1}'`) and retry once. If still failing, note "⚠️ Circleback unavailable" and continue without it.
+- **Empty summary:** If Circleback returns a meeting record but with no/empty summary, note "Previous meeting found but no summary available" — don't silently skip it.
 
 ### 4. LinkedIn research
 - Search: `"[attendee name] [company] LinkedIn"`
@@ -127,14 +145,10 @@ Read `{user.workspace}/style/MEETING_PREP_RULES.md` for additional research step
 ## Output format
 Send via WhatsApp ({user.whatsapp}) AND Slack (DM to {user.slack_username}). **One message per meeting, chronological order, is mandatory.**
 
-**Also send to Chief of Staff:** After sending all meeting briefs, upload the markdown brief file (`{user.workspace}/state/meeting-prep-YYYY-MM-DD.md`) to {user.chief_of_staff.name}'s Slack DM. Use the Slack API `files.upload` (or `files.uploadV2`):
-```bash
-curl -s -F file=@{user.workspace}/state/meeting-prep-YYYY-MM-DD.md \
-  -F channels={user.chief_of_staff.slack_dm_channel} \
-  -F title="Meeting Prep — <date>" \
-  -F initial_comment="📋 *Meeting Prep — <day>*" \
-  -H "Authorization: Bearer <bot_token>" \
-  https://slack.com/api/files.upload
+**Also archive to Obsidian:** After sending all meeting briefs, create a note in your vault at `{user.obsidian_meeting_notes_dir}/YYYY-MM-DD — Meeting Prep.md` containing the full markdown briefs:
+
+```
+obsidian.obsidian_update_file --args '{"filepath": "<dir>/YYYY-MM-DD — Meeting Prep.md", "content": "<full markdown>", "create_if_missing": true}'
 ```
 
 **Never collapse into a single summary block.** The user expects one standalone message per meeting. Send each meeting brief as a separate message to BOTH WhatsApp and Slack. If one channel fails, still deliver to the other.
@@ -151,7 +165,7 @@ Then one message per meeting in this format — use bold subsections and blank l
 
 *Email history:* <Key email context — include important commercial/decision triggers when present (pricing, scope, deliverables, urgency, budget, decision-maker request)>.
 
-*Granola:* <Richer recap: key decisions, action items, owners, unresolved questions, and why a follow-up was needed. If no attendee notes, use company-level notes and label it. Or "No previous meetings found in Granola">.
+*Circleback:* <Richer recap: key decisions, action items, owners, unresolved questions, and why a follow-up was needed. If no attendee notes, use company-level notes and label it. Or "No previous meetings found in Circleback">.
 
 *Why this meeting now:* <One sentence grounded in prior action items and/or current email trigger>.
 
@@ -166,7 +180,7 @@ If a meeting already happened, prefix with ✅ and keep brief.
 If there's a schedule conflict, flag with ⚠️.
 
 ## Save full brief
-Save the full detailed brief to `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` and also send it as a file attachment via WhatsApp.
+Save the full detailed brief to `{user.workspace}/state/meeting-prep-YYYY-MM-DD.md` (for local dedup/state), archive a copy in Obsidian per the step above, and also send it as a file attachment via WhatsApp.
 
 ## ⚠️ CRON CREATION (CRITICAL — DO NOT SKIP)
 This section is NON-OPTIONAL. Cron creation MUST happen for every run with meetings. If you run out of context or time before completing this section, the entire run is a FAILURE.
@@ -188,20 +202,20 @@ After generating all briefs, create a one-shot cron job for EACH meeting that fi
 - Keep language exactly as generated in the source brief.
 - Only allowed change is adding the `⏰ *5 min reminder*` prefix.
 
-Use `openclaw cron add` with `--at` set to 5 min before meeting time, `--delete-after-run`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. The `--no-deliver` flag prevents the announce mechanism from sending a separate message — the task sends WhatsApp directly.
+Use `hermes cron add` with `--at` set to 5 min before meeting time, `--delete-after-run`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. The `--no-deliver` flag prevents the announce mechanism from sending a separate message — the task sends WhatsApp directly.
 
-**Hard requirement:** after creating jobs, run `openclaw cron list` and verify the expected number of `pre-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
+**Hard requirement:** after creating jobs, run `hermes cron list` and verify the expected number of `pre-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
 
 Log each created cron: `python3 {user.workspace}/scripts/skill_log.py meeting-prep INFO "Created pre-meeting cron" '{"meeting": "<name>", "fires_at": "<time>"}'`
 
 ## Post-meeting action items + drafts
-After generating all briefs, create a one-shot cron job for EACH meeting that fires 10 minutes after the meeting END time. The cron task should reference the action-items-todoist skill:
+After generating all briefs, create a one-shot cron job for EACH meeting that fires 10 minutes after the meeting END time. The cron task should reference the action-items-obsidian skill:
 
-Task: "Read and follow ~/executive-assistant-skills/action-items-todoist/SKILL.md. Process ONLY the meeting titled '<meeting title>' that ended around <end time>. Send results to WhatsApp ({user.whatsapp})."
+Task: "Read and follow ~/executive-assistant-skills/action-items-obsidian/SKILL.md. Process ONLY the meeting titled '<meeting title>' that ended around <end time>. Send results to WhatsApp ({user.whatsapp})."
 
-Use `openclaw cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. Name them `post-meeting-<short-name>`.
+Use `hermes cron add` with `--at` set to 10 min after meeting end time, `--delete-after-run`, `--session isolated`, `--timeout-seconds 1200`, `--no-deliver`, `--channel whatsapp`, and `--to {user.whatsapp}`. Name them `post-meeting-<short-name>`.
 
-**Hard requirement:** after creating jobs, run `openclaw cron list` and verify the expected number of `post-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
+**Hard requirement:** after creating jobs, run `hermes cron list` and verify the expected number of `post-meeting-` jobs for today. If count is lower than expected, immediately retry creation and report failure explicitly.
 
 Log each created cron: `python3 {user.workspace}/scripts/skill_log.py meeting-prep INFO "Created post-meeting cron" '{"meeting": "<name>", "fires_at": "<time>"}'`
 
@@ -212,16 +226,16 @@ Log final count: `python3 {user.workspace}/scripts/skill_log.py meeting-prep INF
 ### Deduplication (MANDATORY)
 After processing, the cron MUST append the meeting title to `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` (array of meeting titles already processed). This lets the end-of-day catch-all skip them.
 
-**Before creating ANY Todoist task**, the cron MUST:
+**Before creating ANY Obsidian task**, the cron MUST:
 1. Read `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` — if this meeting is already listed, SKIP entirely (another cron already handled it)
-2. Fetch all open Todoist tasks and check for duplicates by matching task content against the new task intent (same person + same action = duplicate)
+2. Read the Obsidian tasks file and check for duplicates by matching existing task lines against the new task intent (same person + same action = duplicate)
 3. If a matching task already exists, do NOT create a duplicate — skip it silently
 
 This prevents the scenario where a post-meeting cron and the daily end-of-day cron both process the same meeting and create duplicate tasks.
 
 ## Sanity checks
-- **Calendar is source of truth for meeting count**: Cross-reference email threads with the actual calendar events. If an invite was moved/rescheduled, it's still ONE meeting — don't count it as multiple. Check the calendar event ID, not email threads, to determine unique meetings.
-- **First call vs follow-up**: Verify by checking if there is an ACTUAL past Granola meeting with this specific person (exact name match). Rescheduled invites or multiple scheduling emails do NOT make it a follow-up. Only a previously held meeting does.
+- **Calendar is source of truth for meeting count**: Cross-reference email threads with the actual calendar events. If an invite was moved/rescheduled, it's still ONE meeting — don't count it as multiple. Check the Outlook event ID, not email threads, to determine unique meetings.
+- **First call vs follow-up**: Verify by checking if there is an ACTUAL past Circleback meeting with this specific person (exact name match). Rescheduled invites or multiple scheduling emails do NOT make it a follow-up. Only a previously held meeting does.
 - **Message count check (MANDATORY):** Number of sent meeting-brief messages must equal number of meetings with attendees (external + internal). If not equal, send missing meeting messages immediately.
 - **Cron count check (MANDATORY):** Number of `pre-meeting-` jobs and `post-meeting-` jobs created for today must each equal number of meetings with attendees (external + internal).
 
@@ -260,5 +274,5 @@ python3 {user.workspace}/scripts/meeting_prep_assertions.py \
 - No meetings with attendees today → NO_REPLY
 - Missing data → state briefly ("No email history found"), don't invent
 - Never silently omit a data source — if something returned nothing, say so
-- **No cross-contamination**: Each meeting brief must only include information verified for THAT specific attendee. Do not mix up intro sources, email threads, or Granola notes between different meetings. Double-check that every fact in a brief belongs to the correct person.
-- **No generic focus areas**: Focus must be anchored in (a) explicit prior action items from Granola and/or (b) explicit email trigger for this meeting. If neither exists, say so and use a discovery focus.
+- **No cross-contamination**: Each meeting brief must only include information verified for THAT specific attendee. Do not mix up intro sources, email threads, or Circleback notes between different meetings. Double-check that every fact in a brief belongs to the correct person.
+- **No generic focus areas**: Focus must be anchored in (a) explicit prior action items from Circleback and/or (b) explicit email trigger for this meeting. If neither exists, say so and use a discovery focus.

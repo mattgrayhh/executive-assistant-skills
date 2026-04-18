@@ -1,35 +1,36 @@
 # executive-assistant-skills
 
-OpenClaw skills that replace a human executive assistant.
+[Hermes Agent](https://hermes-agent.nousresearch.com/docs/) skills that replace a human executive assistant.
 
-After setting up these skills with [OpenClaw](https://docs.openclaw.ai/), I let go of my human EA and replaced her entirely with my Claw. These five skills handle the core of what an executive assistant does: prepping for meetings, following up on action items, drafting emails, and keeping you on top of everything.
+After setting up these skills with Hermes, I let go of my human EA and replaced her entirely with my Hermes agent. These five skills handle the core of what an executive assistant does: prepping for meetings, following up on action items, drafting emails, and keeping you on top of everything.
 
 ## What's included
 
 | Skill | What it replaces |
 |-------|-----------------|
 | `meeting-prep` | EA researching attendees, pulling email history, and briefing you before each call |
-| `action-items-todoist` | EA reviewing meeting notes, creating follow-up tasks, and drafting emails you promised to send |
+| `action-items-obsidian` | EA reviewing meeting notes, capturing follow-up tasks in Obsidian, and drafting emails you promised to send |
 | `email-drafting` | EA drafting replies, intro emails, scheduling responses, and thank-you notes in your voice |
-| `executive-digest` | EA giving you a morning status update: stalled threads, pending intros, overdue tasks, calendar conflicts |
-| `todoist-due-drafts` | EA checking your task list each morning, drafting follow-up/ping emails for anything due today, and notifying you to review |
-| `humanizer` | Making sure nothing your Claw writes sounds like AI wrote it (originally by [biostartechnology](https://clawhub.ai/biostartechnology/humanizer)) |
+| `executive-digest` | EA giving you a morning status update: stalled threads, pending intros, overdue Asana tasks, calendar conflicts |
+| `obsidian-due-drafts` | EA checking your Obsidian task list each morning, drafting follow-up/ping emails for anything due today, and notifying you to review |
+| `humanizer` | Making sure nothing your agent writes sounds like AI wrote it |
 
 ## How it works
 
-Each skill is a markdown file (`SKILL.md`) that tells your Claw exactly how to do the job. Your Claw reads the skill, follows the instructions, and delivers results to WhatsApp (or Slack, Telegram, etc.).
+Each skill is a markdown file (`SKILL.md`) that tells Hermes exactly how to do the job. Hermes reads the skill, follows the instructions, and delivers results to WhatsApp (or Slack, Telegram, etc.).
 
-Skills run on cron schedules — meeting prep fires before your first meeting, action items run after your last meeting, and the digest hits every morning. You can also trigger any skill manually by asking your Claw.
+Skills run on cron schedules — meeting prep fires before your first meeting, action items run after your last meeting, and the digest hits every morning. You can also trigger any skill manually by asking Hermes (e.g. `/meeting-prep`) or in natural language.
 
 All personal config (email accounts, timezone, work schedule, etc.) lives in a single `config/user.json` that's gitignored and never committed.
 
 ## Prerequisites
 
-- [OpenClaw](https://docs.openclaw.ai/) running (local or server)
-- Two Gmail accounts connected via [gog](https://github.com/xhit/gog) CLI
-- [Granola](https://granola.ai/) or [Grain](https://grain.com/) for meeting transcripts (via mcporter MCP)
-- [Todoist CLI](https://github.com/joelhoelting/todoist-cli) for task management
-- A `style/` directory in your OpenClaw workspace with email style guides (see `docs/setup.md`)
+- [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) running (local or server)
+- Two Microsoft 365 accounts connected via the [ms-365 MCP server](https://github.com/softeria/ms-365-mcp-server)
+- [Circleback](https://circleback.ai/) as your AI notetaker (via the [Circleback MCP](https://support.circleback.ai/en/articles/13249081-circleback-mcp))
+- [Obsidian](https://obsidian.md/) with the Local REST API plugin + the [obsidian-mcp-server](https://github.com/cyanheads/obsidian-mcp-server)
+- [Asana](https://asana.com/) connected via the [official Asana MCP v2](https://developers.asana.com/docs/integrating-with-asanas-mcp-server) (`https://mcp.asana.com/v2/mcp`)
+- A `style/` directory in your Hermes workspace with email style guides (see `docs/setup.md`)
 
 ---
 
@@ -48,29 +49,28 @@ cp ~/executive-assistant-skills/config/user.example.json ~/executive-assistant-s
 # Edit user.json with your values — it's gitignored
 ```
 
-### 3. Tell OpenClaw to load these skills
+### 3. Tell Hermes to load these skills
 
-Edit `~/.openclaw/openclaw.json`:
-
-```json
-{
-  "skills": {
-    "load": {
-      "extraDirs": ["~/executive-assistant-skills"]
-    }
-  }
-}
-```
-
-### 4. Restart
+Symlink each skill directory into `~/.hermes/skills/`:
 
 ```bash
-openclaw gateway restart
+mkdir -p ~/.hermes/skills
+for d in meeting-prep action-items-obsidian email-drafting executive-digest obsidian-due-drafts humanizer; do
+  ln -s ~/executive-assistant-skills/$d ~/.hermes/skills/$d
+done
+```
+
+Hermes auto-discovers any `SKILL.md` under `~/.hermes/skills/` on the next start.
+
+### 4. Start the gateway
+
+```bash
+hermes gateway start
 ```
 
 ### 5. Set up crons
 
-See `docs/crons.md` for ready-to-paste cron job configs.
+See `docs/crons.md` for ready-to-paste cron configs for `~/.hermes/cron/`.
 
 ---
 
@@ -81,21 +81,25 @@ See `config/user.example.json` for the full template:
 | Field | Example | Used for |
 |-------|---------|----------|
 | `name` | `"YourName"` | Meeting transcript queries, task attribution |
-| `primary_email` | `"you@gmail.com"` | Gmail account 1 |
-| `work_email` | `"you@company.com"` | Gmail account 2 |
+| `full_name` | `"Your Full Name"` | Exact-match attribution in meeting notes |
+| `primary_email` | `"you@outlook.com"` | Microsoft 365 account 1 |
+| `work_email` | `"you@company.com"` | Microsoft 365 account 2 |
 | `whatsapp` | `"+1234567890"` | Digest and alert delivery |
 | `timezone` | `"America/New_York"` | Meeting times, cron scheduling |
 | `scheduling_cc` | `"assistant@company.com"` | CC on scheduling emails |
 | `scheduling_silent_cc` | `"colleague@company.com"` | Silent CC (not mentioned in body) |
 | `slack_username` | `"yourname"` | Slack DM for meeting briefs |
 | `signature` | `"--yourname"` | Email sign-off |
-| `workspace` | `"/home/user/.openclaw/workspace"` | Absolute path to your OpenClaw workspace |
+| `workspace` | `"/home/user/.hermes"` | Absolute path to your Hermes workspace |
+| `obsidian_vault_path` | `"/home/user/Obsidian/MyVault"` | Vault root used by the Obsidian MCP |
+| `obsidian_tasks_file` | `"Tasks.md"` | Vault-relative path where EA tasks live |
+| `asana_workspace_gid` | `"1199999999999999"` | Asana workspace ID surfaced in the digest |
 
 ---
 
 ## Full setup guide
 
-- `docs/setup.md` — complete setup (mcporter, OAuth, gog, Todoist CLI)
+- `docs/setup.md` — complete setup (Hermes, M365 MCP, Obsidian MCP, Circleback MCP, Asana MCP)
 - `docs/crons.md` — cron job templates for all skills
 
 ---
