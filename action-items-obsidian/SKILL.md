@@ -10,13 +10,15 @@ Extract and use throughout:
 - `name`, `full_name` — to identify your action items in meeting notes (e.g. "Martin Gonto")
 - `whatsapp` — for result delivery
 - `workspace` — absolute path to Hermes workspace
-- `obsidian_vault_path` — vault root
+- `obsidian_vault_path` — absolute path to your local Obsidian vault (just a folder of markdown files)
 - `obsidian_tasks_file` — vault-relative path to tasks file (e.g. `Tasks.md`)
+
+The full path to the tasks file is `{user.obsidian_vault_path}/{user.obsidian_tasks_file}`. All vault access is direct filesystem IO — no MCP, no Obsidian-REST plugin. Obsidian picks up the changes the next time it's focused.
 
 Do not proceed until you have these values.
 
 ## Debug Logging (MANDATORY)
-Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py action-items <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback, obsidian). On any error, log the full tool args and error before continuing.
+Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py action-items <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback) and every vault filesystem write. On any error, log the full tool args and error before continuing.
 
 ## Task format in Obsidian
 All tasks go into `{user.obsidian_tasks_file}` as Obsidian Tasks plugin checkboxes:
@@ -77,17 +79,22 @@ Preserve Circleback source links for citations.
 
 ### 3. Capture tasks in Obsidian
 
-Read the current tasks file to know existing entries and avoid duplicates:
+Read the current tasks file (direct filesystem read) to know existing entries and avoid duplicates:
 
-```
-obsidian.obsidian_read_file --args '{"filepath": "{user.obsidian_tasks_file}"}'
+```bash
+cat "{user.obsidian_vault_path}/{user.obsidian_tasks_file}"
 ```
 
-For each action item, build the task line per the "Task format" section above. Then append via the Obsidian MCP:
+(Use the `Read` tool on the absolute path in-agent.)
 
+For each action item, build the task line per the "Task format" section above. Then append it to the file via plain filesystem append:
+
+```bash
+printf '%s\n' '- [ ] <title> 📅 <YYYY-MM-DD> <priority_glyph> #meeting/<short> #person/<name> [link](<circleback_url>)' \
+  >> "{user.obsidian_vault_path}/{user.obsidian_tasks_file}"
 ```
-obsidian.obsidian_append_content --args '{"filepath": "{user.obsidian_tasks_file}", "content": "- [ ] <title> 📅 <YYYY-MM-DD> <priority_glyph> #meeting/<short> #person/<name> [link](<circleback_url>)\n"}'
-```
+
+(Prefer the `Edit` tool to insert lines in a specific section when the tasks file is organized by heading — otherwise append at EOF.)
 
 **Task line MUST include:**
 - Actionable title (starts with a verb)
@@ -114,9 +121,9 @@ One task per intent. The user will naturally do the steps in order.
 #### Todo dedup (MANDATORY)
 Before appending a task, run a duplicate check against the current tasks file:
 1. Normalize proposed title (lowercase, trim punctuation, collapse whitespace)
-2. Parse every `- [ ]` line from `{user.obsidian_tasks_file}` and compare normalized task titles
+2. Parse every `- [ ]` line from `{user.obsidian_vault_path}/{user.obsidian_tasks_file}` and compare normalized task titles
 3. Treat near-identical intro tasks as duplicates (e.g., "Intro David to Marcos" vs "Intro David (n8n) to Marcos Nils")
-4. If duplicate exists: do NOT append a new task; if useful, update the existing line's trailing metadata (add the new meeting tag + Circleback link separated by a comma) via `obsidian_update_file`
+4. If duplicate exists: do NOT append a new task; if useful, update the existing line's trailing metadata (add the new meeting tag + Circleback link) via the `Edit` tool on that exact line
 5. In output, report dedup decisions under `Skipped as duplicates:`
 
 ### 4. Draft follow-up emails
@@ -160,9 +167,9 @@ If you committed to "build a proposal" (or equivalent: proposal/deck/scope draft
 ### 5. Check if existing Obsidian tasks were fulfilled in today's meetings
 After processing new action items, also check if any **existing open tasks** were addressed/completed during today's meetings:
 
-1. Re-read `{user.obsidian_tasks_file}` and list every open `- [ ]` line.
+1. Re-read `{user.obsidian_vault_path}/{user.obsidian_tasks_file}` and list every open `- [ ]` line.
 2. For each meeting, check if the discussion covered or fulfilled any open task (e.g., "Share AI strategy with Colin" → discussed AI strategy directly with Colin in the call).
-3. If a task was clearly fulfilled in the meeting, **complete it**: use `obsidian.obsidian_update_file` to flip `- [ ]` → `- [x]` on that exact line and append `✅ <today YYYY-MM-DD>` at the end of the line.
+3. If a task was clearly fulfilled in the meeting, **complete it**: use the `Edit` tool to flip `- [ ]` → `- [x]` on that exact line and append `✅ <today YYYY-MM-DD>` at the end of the line.
 4. Report completed tasks in the output: "✅ Completed: [task] — fulfilled during [meeting name]"
 
 This ensures the Obsidian tasks list stays clean and reflects what actually happened.
@@ -170,7 +177,7 @@ This ensures the Obsidian tasks list stays clean and reflects what actually happ
 ## Error handling
 - If `ms365.list-calendar-events` fails: log the error with full args + error (`python3 {user.workspace}/scripts/skill_log.py action-items ERROR "ms365 calendar failed" '{"args": "...", "error": "..."}'`), continue with the other account and/or Circleback-only.
 - If Circleback returns auth errors: report "⚠️ Circleback auth expired, re-run the OAuth flow" and stop.
-- If Obsidian MCP fails (Obsidian app not running, REST plugin disabled): try once more after 30s, then fall back to writing tasks to `{user.workspace}/state/pending-obsidian-tasks.md` and alert the user via WhatsApp.
+- If the vault path is missing or unwritable (wrong `obsidian_vault_path`, permission error): log the error, fall back to writing tasks to `{user.workspace}/state/pending-obsidian-tasks.md`, and alert the user via WhatsApp.
 - If any step fails, continue with remaining steps when possible — don't abort the entire run for one failure.
 
 ## Deduplication (CRITICAL — prevents duplicate tasks)
@@ -185,7 +192,7 @@ This ensures the Obsidian tasks list stays clean and reflects what actually happ
 
 ### Task-level dedup
 - Before appending ANY task, check BOTH open AND recently completed tasks for near-duplicates:
-  1. Read `{user.obsidian_tasks_file}` once
+  1. Read `{user.obsidian_vault_path}/{user.obsidian_tasks_file}` once
   2. Parse open `- [ ]` lines AND completed `- [x]` lines whose `✅ YYYY-MM-DD` is today
   - Same person + same action intent = duplicate (e.g. "Text Morgane about Hank" and "Text Morgane (Braintrust) after Hank call")
   - Normalize: lowercase, strip parentheticals, collapse whitespace

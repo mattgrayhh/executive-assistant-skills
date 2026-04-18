@@ -16,7 +16,7 @@ Extract and use throughout:
 Do not proceed until you have these values.
 
 ## Debug Logging (MANDATORY)
-Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py email-drafting <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback, obsidian). On any error, log the full tool args and error before continuing.
+Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py email-drafting <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback) and every vault file edit. On any error, log the full tool args and error before continuing.
 
 ## Overview
 Auto-draft and manually-requested email drafts for {user.primary_email} and {user.work_email} in Outlook via the `ms365` MCP server.
@@ -33,7 +33,7 @@ Auto-draft and manually-requested email drafts for {user.primary_email} and {use
 
 ## Execution
 - **"Reply" always means Reply All** — include all original To + CC recipients. Only exclude if user explicitly says to reply to one person. Exception: intro handling moves the introducer to BCC per the intro sequence below.
-- **After sending any email/draft**, check if it fulfills an open Obsidian task (send deck, intro, follow-up, etc.). If yes → flip the task from `- [ ]` to `- [x]` via `obsidian.obsidian_update_file` and confirm.
+- **After sending any email/draft**, check if it fulfills an open Obsidian task (send deck, intro, follow-up, etc.). If yes → open `{user.obsidian_vault_path}/{user.obsidian_tasks_file}` and use the `Edit` tool to flip that exact line from `- [ ]` to `- [x]` (appending `✅ <YYYY-MM-DD>`), then confirm.
 - **Hook/cron triggers**: Always run via isolated sub-agent (prevents memory/context contamination)
 - **Direct user requests** ("draft a reply to X"): Main agent may execute directly, but must still follow all style rules and must NOT read MEMORY.md or daily memory files
 

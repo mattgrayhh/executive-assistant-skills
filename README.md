@@ -28,7 +28,7 @@ All personal config (email accounts, timezone, work schedule, etc.) lives in a s
 - [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) running (local or server)
 - Two Microsoft 365 accounts connected via the [ms-365 MCP server](https://github.com/softeria/ms-365-mcp-server)
 - [Circleback](https://circleback.ai/) as your AI notetaker (via the [Circleback MCP](https://support.circleback.ai/en/articles/13249081-circleback-mcp))
-- [Obsidian](https://obsidian.md/) with the Local REST API plugin + the [obsidian-mcp-server](https://github.com/cyanheads/obsidian-mcp-server)
+- [Obsidian](https://obsidian.md/) installed locally — your vault is just a folder of markdown files; Hermes reads and writes it directly via filesystem tools (no MCP, no plugin required)
 - [Asana](https://asana.com/) connected via the [official Asana MCP v2](https://developers.asana.com/docs/integrating-with-asanas-mcp-server) (`https://mcp.asana.com/v2/mcp`)
 - A `style/` directory in your Hermes workspace with email style guides (see `docs/setup.md`)
 
@@ -91,7 +91,7 @@ See `config/user.example.json` for the full template:
 | `slack_username` | `"yourname"` | Slack DM for meeting briefs |
 | `signature` | `"--yourname"` | Email sign-off |
 | `workspace` | `"/home/user/.hermes"` | Absolute path to your Hermes workspace |
-| `obsidian_vault_path` | `"/home/user/Obsidian/MyVault"` | Vault root used by the Obsidian MCP |
+| `obsidian_vault_path` | `"/home/user/Obsidian/MyVault"` | Local vault root (filesystem path) |
 | `obsidian_tasks_file` | `"Tasks.md"` | Vault-relative path where EA tasks live |
 | `asana_workspace_gid` | `"1199999999999999"` | Asana workspace ID surfaced in the digest |
 
@@ -99,7 +99,7 @@ See `config/user.example.json` for the full template:
 
 ## Full setup guide
 
-- `docs/setup.md` — complete setup (Hermes, M365 MCP, Obsidian MCP, Circleback MCP, Asana MCP)
+- `docs/setup.md` — complete setup (Hermes, M365 MCP, Circleback MCP, Asana MCP, local Obsidian vault)
 - `docs/crons.md` — cron job templates for all skills
 
 ---

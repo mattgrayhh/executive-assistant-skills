@@ -17,8 +17,8 @@ python3 {user.workspace}/scripts/skill_log.py <skill_name> <level> "<message>" [
 Every skill MUST log at minimum:
 1. **Start**: `INFO "Starting <skill_name> run"`
 2. **Config loaded**: `DEBUG "Config loaded" '{"user": "<name>", "accounts": [...]}'`
-3. **Before each MCP call** (ms-365, obsidian, circleback, asana): `DEBUG "Calling <server>.<tool>" '{"args": {...}}'`
-4. **After each MCP call**: `DEBUG "Result from <server>.<tool>" '{"status": "ok|error", "count": N}'` or `ERROR` if it failed
+3. **Before each MCP call** (ms-365, circleback, asana) or vault filesystem write: `DEBUG "Calling <server>.<tool>" '{"args": {...}}'` or `DEBUG "Writing vault file" '{"path": "..."}'`
+4. **After each call / write**: `DEBUG "Result from <server>.<tool>" '{"status": "ok|error", "count": N}'` or `ERROR` if it failed
 5. **Key decisions**: `INFO "Skipping meeting X (already processed)"` or `INFO "Drafting email for Y"`
 6. **End**: `INFO "Completed <skill_name> run" '{"tasks_created": N, "drafts": N, "errors": N}'`
 

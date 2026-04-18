@@ -32,7 +32,7 @@ Fields to fill in:
 - `calendar_id` — usually `"primary"`
 - `signature` — email sign-off (e.g. `"--yourname"`)
 - `workspace` — absolute path to your Hermes workspace (e.g. `/home/youruser/.hermes`)
-- `obsidian_vault_path` — absolute path to your Obsidian vault root
+- `obsidian_vault_path` — absolute path to your local Obsidian vault root (a plain folder of markdown files)
 - `obsidian_tasks_file` — vault-relative path where EA tasks live (e.g. `Tasks.md`)
 - `obsidian_meeting_notes_dir` — vault-relative folder for meeting briefs (e.g. `Meetings`)
 - `asana_workspace_gid` — Asana workspace ID the digest should pull from
@@ -87,14 +87,6 @@ mcp_servers:
     env:
       MS365_MCP_CLIENT_ID: "${MS365_MCP_CLIENT_ID}"
 
-  obsidian:
-    transport: stdio
-    command: npx
-    args: ["-y", "@cyanheads/obsidian-mcp-server"]
-    env:
-      OBSIDIAN_API_KEY: "${OBSIDIAN_API_KEY}"
-      OBSIDIAN_BASE_URL: "http://127.0.0.1:27123"
-
   circleback:
     transport: http
     url: "https://app.circleback.ai/api/mcp"
@@ -108,8 +100,9 @@ Put secrets in `~/.hermes/.env`:
 
 ```bash
 MS365_MCP_CLIENT_ID=<your Azure AD app registration client ID>
-OBSIDIAN_API_KEY=<API key from the Obsidian Local REST API plugin>
 ```
+
+Obsidian needs no MCP — the skills read and write the vault directly as markdown files. Just make sure the path in `obsidian_vault_path` points at the folder Obsidian treats as the vault root.
 
 Hermes reloads MCP servers on gateway restart.
 
@@ -121,7 +114,7 @@ The `email-drafting` skill writes emails in your voice — but it needs to learn
 
 Ask Hermes:
 
-> "Read my last 200 sent emails from both Microsoft 365 accounts (use the ms365 MCP) and create an email writing style guide. Analyze: sentence length, greeting patterns, sign-off patterns, vocabulary, tone, punctuation habits, and common phrases. Save it to `~/.hermes/style/EMAIL_STYLE.md`."
+> "Read my last 200 sent emails from both Microsoft 365 accounts (use the ms365 MCP) and create an email writing style guide. Analyze: sentence length, greeting patterns, sign-off patterns, vocabulary, tone, punctuation habits, and common phrases. Write it to `~/.hermes/style/EMAIL_STYLE.md` using filesystem tools."
 
 Then:
 
@@ -171,15 +164,15 @@ hermes tools call circleback.list_meetings --args '{"limit": 1}'
 
 Circleback uses OAuth with dynamic client registration. Follow the auth URL printed to the terminal. Tokens are stored by Hermes.
 
-## 10. Authenticate Obsidian
+## 10. Verify the Obsidian vault
 
-Install the "Local REST API" community plugin inside Obsidian, copy the generated API key, put it in `~/.hermes/.env` as `OBSIDIAN_API_KEY`. Make sure Obsidian is running whenever the agent needs vault access.
-
-Verify:
+No auth, no plugin. Confirm that `obsidian_vault_path` in `user.json` points at the folder Obsidian opens as a vault (it should contain a `.obsidian/` subdirectory):
 
 ```bash
-hermes tools call obsidian.obsidian_list_files_in_vault --args '{}'
+ls "$(python3 -c 'import json; print(json.load(open("'$HOME'/executive-assistant-skills/config/user.json"))["obsidian_vault_path"])')/.obsidian"
 ```
+
+If that prints plugin/settings files, you're set. The skills read/write markdown files in the vault directly. You do NOT need Obsidian to be running for the skills to work — Obsidian will pick up the changes on next open.
 
 ## 11. Authenticate Asana
 
@@ -194,7 +187,7 @@ Asana MCP v2 uses OAuth; tokens expire every hour but refresh automatically. Fol
 ```bash
 hermes tools call ms365.list-mail-messages --args '{"top": 1}'
 hermes tools call circleback.list_meetings --args '{"limit": 1}'
-hermes tools call obsidian.obsidian_read_file --args '{"filepath": "Tasks.md"}'
+cat "<obsidian_vault_path>/Tasks.md"   # local file read, no MCP
 hermes tools call asana.search_tasks --args '{"workspace": "<gid>", "text": "test"}'
 ```
 
@@ -202,6 +195,6 @@ Then set up cron jobs per `docs/crons.md`.
 
 ### Skill-specific notes
 
-- **obsidian-due-drafts** requires both Obsidian MCP (step 10) and ms365 MCP (step 8) to be working. It reads tasks from your Obsidian tasks file, searches Outlook for existing threads, and creates drafts. It also depends on the `email-drafting` skill's style guide (step 6).
+- **obsidian-due-drafts** needs ms365 MCP (step 8) and read access to `obsidian_vault_path/obsidian_tasks_file` on disk. It reads tasks, searches Outlook for existing threads, and creates drafts. It also depends on the `email-drafting` skill's style guide (step 6).
 - **executive-digest** reads from ms365 (mail + calendar) and Asana (tasks). Obsidian is not queried by the digest — Asana is the task source.
-- **action-items-obsidian** writes tasks into your Obsidian vault. The exact location is controlled by `obsidian_tasks_file`. If you prefer daily-note capture, change that field to a Templater-resolved daily path and update the skill accordingly.
+- **action-items-obsidian** writes tasks directly into your vault on disk (`obsidian_vault_path/obsidian_tasks_file`). Obsidian will pick up the changes the next time the app is focused. If you prefer daily-note capture, change that field to a date-stamped path and update the skill accordingly.

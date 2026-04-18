@@ -11,16 +11,21 @@ Extract and use throughout:
 - `whatsapp` — for notification delivery
 - `workspace` — absolute path to Hermes workspace
 - `signature` — email signature
+- `obsidian_vault_path` — absolute path to your local Obsidian vault
 - `obsidian_tasks_file` — vault-relative path to your tasks file
 
+The tasks file lives on disk at `{user.obsidian_vault_path}/{user.obsidian_tasks_file}` — just a markdown file. No MCP, no running Obsidian required.
+
 ## Debug Logging (MANDATORY)
-Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py obsidian-due-drafts <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (obsidian, ms365, circleback). On any error, log the full tool args and error before continuing.
+Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py obsidian-due-drafts <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback) and every vault file read. On any error, log the full tool args and error before continuing.
 
 ## Steps
 
 ### 1. Read today's due tasks from Obsidian
+Read the tasks file directly from disk:
+
 ```
-obsidian.obsidian_read_file --args '{"filepath": "{user.obsidian_tasks_file}"}'
+Read {user.obsidian_vault_path}/{user.obsidian_tasks_file}
 ```
 
 Parse every open task line (`- [ ]`). A task counts as "due today or overdue" if:
@@ -94,10 +99,9 @@ python3 {user.workspace}/scripts/cron_canary.py ping obsidian-due-drafts
 ```
 
 ## Error handling
-- If Obsidian MCP fails: notify via WhatsApp "⚠️ Obsidian due-drafts failed: <error>", ping canary, exit.
+- If the tasks file is missing or unreadable: notify via WhatsApp "⚠️ Obsidian due-drafts failed — could not read <path>: <error>", ping canary, exit.
 - If Circleback lookup fails for a task: continue without meeting context — draft from email history + task content only.
 - If Outlook draft creation fails for one task: continue with remaining tasks, report failures in the notification.
-- If the Obsidian REST plugin is unreachable (app closed): report "⚠️ Obsidian not running — start Obsidian to allow due-drafts" and exit.
 
 ## Rules
 - Don't check off the tasks — just draft and notify. User decides when to send and ticks the checkbox manually (or via the email-drafting skill's "after send → complete task" rule).

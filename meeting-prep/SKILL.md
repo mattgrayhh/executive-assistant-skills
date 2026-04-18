@@ -13,12 +13,13 @@ Extract and use throughout:
 - `timezone` — IANA timezone (e.g. America/Argentina/Buenos_Aires)
 - `slack_username` — Slack DM target
 - `workspace` — absolute path to Hermes workspace (e.g. /home/user/.hermes)
-- `obsidian_meeting_notes_dir` — folder in your vault where briefs are archived
+- `obsidian_vault_path` — absolute path to your local Obsidian vault
+- `obsidian_meeting_notes_dir` — vault-relative folder where briefs are archived (e.g. `Meetings`)
 
 Do not proceed until you have these values.
 
 ## Debug Logging (MANDATORY)
-Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py meeting-prep <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback, obsidian) and every web search. On any error, log the full tool args and error before continuing.
+Read `../config/DEBUG_LOGGING.md` for the full convention. Use `python3 {user.workspace}/scripts/skill_log.py meeting-prep <level> "<message>" ['<details>']` at every key step. Log BEFORE and AFTER every MCP call (ms365, circleback), every vault file write, and every web search. On any error, log the full tool args and error before continuing.
 
 ## Scope
 - Timezone: {user.timezone}
@@ -145,11 +146,7 @@ Read `{user.workspace}/style/MEETING_PREP_RULES.md` for additional research step
 ## Output format
 Send via WhatsApp ({user.whatsapp}) AND Slack (DM to {user.slack_username}). **One message per meeting, chronological order, is mandatory.**
 
-**Also archive to Obsidian:** After sending all meeting briefs, create a note in your vault at `{user.obsidian_meeting_notes_dir}/YYYY-MM-DD — Meeting Prep.md` containing the full markdown briefs:
-
-```
-obsidian.obsidian_update_file --args '{"filepath": "<dir>/YYYY-MM-DD — Meeting Prep.md", "content": "<full markdown>", "create_if_missing": true}'
-```
+**Also archive to Obsidian:** After sending all meeting briefs, write a note into your vault on disk at `{user.obsidian_vault_path}/{user.obsidian_meeting_notes_dir}/YYYY-MM-DD — Meeting Prep.md` containing the full markdown briefs. Use the `Write` tool (or `mkdir -p` + `Write`) to create the file directly — no MCP call required.
 
 **Never collapse into a single summary block.** The user expects one standalone message per meeting. Send each meeting brief as a separate message to BOTH WhatsApp and Slack. If one channel fails, still deliver to the other.
 
@@ -228,7 +225,7 @@ After processing, the cron MUST append the meeting title to `{user.workspace}/st
 
 **Before creating ANY Obsidian task**, the cron MUST:
 1. Read `{user.workspace}/state/processed-meetings-YYYY-MM-DD.json` — if this meeting is already listed, SKIP entirely (another cron already handled it)
-2. Read the Obsidian tasks file and check for duplicates by matching existing task lines against the new task intent (same person + same action = duplicate)
+2. Read the Obsidian tasks file on disk (`{user.obsidian_vault_path}/{user.obsidian_tasks_file}`) and check for duplicates by matching existing task lines against the new task intent (same person + same action = duplicate)
 3. If a matching task already exists, do NOT create a duplicate — skip it silently
 
 This prevents the scenario where a post-meeting cron and the daily end-of-day cron both process the same meeting and create duplicate tasks.
